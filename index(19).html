@@ -1,0 +1,1178 @@
+<!DOCTYPE html>
+<html lang="pt-PT">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mundial 2026 - Troublemaker Bethouse</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;700&family=Roboto+Mono:wght@500;700&display=swap" rel="stylesheet">
+<!-- Firebase (Realtime Database) -->
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+<style>
+  :root{
+    --navy:#0B1F3A;
+    --navy-light:#16335E;
+    --gold:#D4AF37;
+    --green:#1B6E45;
+    --red:#C8102E;
+    --cream:#F4F1EA;
+    --gray:#8A93A6;
+    --card:#11284B;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{
+    font-family:'Inter',sans-serif;
+    background:var(--navy);
+    color:var(--cream);
+    min-height:100vh;
+    line-height:1.5;
+  }
+  h1,h2,h3,.display{
+    font-family:'Bebas Neue',sans-serif;
+    letter-spacing:1px;
+  }
+  .mono{font-family:'Roboto Mono',monospace;}
+
+  /* HEADER / SCOREBOARD */
+  header{
+    background:linear-gradient(180deg,var(--navy-light) 0%,var(--navy) 100%);
+    border-bottom:3px solid var(--gold);
+    padding:20px 24px;
+  }
+  header h1{
+    font-size:32px;
+    color:var(--gold);
+    display:flex;align-items:center;gap:10px;
+  }
+  header h1 span.sub{
+    font-family:'Inter',sans-serif;
+    font-size:13px;
+    color:var(--gray);
+    font-weight:500;
+    letter-spacing:0;
+  }
+  .ticker{
+    margin-top:14px;
+    display:flex;gap:14px;overflow-x:auto;
+    padding-bottom:4px;
+  }
+  .ticker-card{
+    flex:0 0 auto;
+    background:var(--card);
+    border:1px solid #1f3a63;
+    border-radius:8px;
+    padding:10px 16px;
+    min-width:170px;
+    text-align:center;
+    position:relative;
+  }
+  .ticker-card.live{border-color:var(--red);}
+  .live-dot{
+    position:absolute;top:8px;right:10px;
+    width:8px;height:8px;border-radius:50%;
+    background:var(--red);
+    animation:pulse 1.4s infinite;
+  }
+  @keyframes pulse{0%,100%{opacity:1;}50%{opacity:.25;}}
+  .ticker-teams{font-size:13px;color:var(--gray);margin-bottom:6px;}
+  .ticker-score{font-size:26px;font-weight:700;}
+  .ticker-status{font-size:11px;color:var(--gold);margin-top:4px;letter-spacing:1px;}
+
+  /* NAV */
+  nav{
+    display:flex;gap:4px;
+    background:var(--navy-light);
+    padding:0 24px;
+    border-bottom:1px solid #1f3a63;
+  }
+  nav button{
+    background:none;border:none;color:var(--gray);
+    font-family:'Bebas Neue',sans-serif;
+    font-size:16px;letter-spacing:1px;
+    padding:14px 18px;cursor:pointer;
+    border-bottom:3px solid transparent;
+  }
+  nav button.active{color:var(--gold);border-bottom-color:var(--gold);}
+
+  main{padding:24px;max-width:960px;margin:0 auto;}
+  section{display:none;}
+  section.active{display:block;}
+
+  /* CLASSIFICAÇÃO */
+  table{width:100%;border-collapse:collapse;}
+  th,td{padding:10px 12px;text-align:left;border-bottom:1px solid #1f3a63;font-size:14px;}
+  th{color:var(--gold);font-size:12px;letter-spacing:1px;text-transform:uppercase;}
+  td.num,th.num{text-align:center;}
+  tr.me{background:rgba(212,175,55,0.08);}
+  .rank{font-family:'Roboto Mono',monospace;color:var(--gray);}
+  .rank.first{color:var(--gold);font-weight:700;}
+  .badge{
+    display:inline-block;font-size:11px;padding:2px 8px;border-radius:10px;
+    margin-left:6px;font-family:'Inter',sans-serif;
+  }
+  .badge-joker{background:var(--red);color:#fff;}
+  .pts{font-family:'Roboto Mono',monospace;font-weight:700;color:var(--gold);font-size:16px;}
+
+  /* JOGOS / PALPITES */
+  .match{
+    background:var(--card);border:1px solid #1f3a63;border-radius:10px;
+    padding:16px;margin-bottom:14px;
+  }
+  .match-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;}
+  .match-teams{font-size:18px;}
+  .match-status{font-size:11px;color:var(--gray);letter-spacing:1px;}
+  .match-status.live{color:var(--red);}
+  .match-status.final{color:var(--green);}
+  .palpite-grid{display:flex;flex-wrap:wrap;gap:18px;align-items:center;}
+  .palpite-grid label{font-size:12px;color:var(--gray);display:block;margin-bottom:4px;}
+  input[type=number]{
+    width:54px;background:var(--navy);color:var(--cream);
+    border:1px solid #1f3a63;border-radius:6px;padding:6px;text-align:center;
+    font-family:'Roboto Mono',monospace;font-size:16px;
+  }
+  .score-input{display:flex;align-items:center;gap:8px;}
+  .joker-toggle{
+    display:flex;align-items:center;gap:6px;font-size:12px;color:var(--gray);
+    cursor:pointer;border:1px dashed var(--gold);border-radius:6px;padding:6px 10px;
+  }
+  .joker-toggle.active{background:var(--gold);color:var(--navy);border-style:solid;font-weight:700;}
+  .resultado-real{
+    font-size:12px;color:var(--gray);margin-top:10px;border-top:1px solid #1f3a63;padding-top:8px;
+  }
+  .resultado-real b{color:var(--cream);font-family:'Roboto Mono',monospace;}
+  .pontos-ganhos{color:var(--gold);font-weight:700;}
+
+  /* REGRAS */
+  .regra-row{
+    display:flex;justify-content:space-between;align-items:center;
+    background:var(--card);border:1px solid #1f3a63;border-radius:8px;
+    padding:14px 16px;margin-bottom:10px;
+  }
+  .regra-label{font-size:14px;}
+  .regra-desc{font-size:12px;color:var(--gray);margin-top:2px;}
+  .regra-row input{width:70px;}
+  .save-btn{
+    margin-top:16px;background:var(--gold);color:var(--navy);border:none;
+    font-family:'Bebas Neue',sans-serif;font-size:15px;letter-spacing:1px;
+    padding:12px 24px;border-radius:8px;cursor:pointer;
+  }
+  .save-msg{font-size:12px;color:var(--green);margin-left:12px;}
+
+  /* PERFIS */
+  .profile-form{
+    background:var(--card);border:1px solid #1f3a63;border-radius:10px;padding:18px;
+  }
+  .form-row{display:flex;gap:16px;flex-wrap:wrap;margin-bottom:6px;}
+  .form-row > div{flex:1;min-width:160px;}
+  .profile-form label{font-size:12px;color:var(--gray);display:block;margin-bottom:4px;}
+  .profile-form input[type=text], .profile-form select, .profile-card select{
+    width:100%;background:var(--navy);color:var(--cream);
+    border:1px solid #1f3a63;border-radius:6px;padding:8px;font-size:14px;
+    font-family:'Inter',sans-serif;
+  }
+  .palpite-linha{
+    display:flex;align-items:center;gap:14px;flex-wrap:wrap;
+    padding:8px 0;border-bottom:1px solid #1f3a63;
+  }
+  .palpite-linha:last-child{border-bottom:none;}
+  .palpite-linha .teams{flex:1;min-width:160px;font-size:14px;}
+
+  .profile-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px;}
+  .profile-card{
+    background:var(--card);border:1px solid #1f3a63;border-radius:10px;padding:16px;
+  }
+  .profile-card-head{display:flex;align-items:center;gap:10px;margin-bottom:10px;}
+  .profile-card-head input[type=text]{
+    flex:1;background:var(--navy);color:var(--gold);border:1px solid #1f3a63;
+    border-radius:6px;padding:8px;font-family:'Bebas Neue',sans-serif;font-size:18px;letter-spacing:1px;
+  }
+  .profile-card .fav-row{display:flex;align-items:center;gap:8px;margin-bottom:12px;font-size:12px;color:var(--gray);}
+  .profile-card .fav-row select{width:auto;flex:1;}
+  .profile-card .palpite-linha .teams{font-size:13px;}
+  .remove-link{
+    font-size:11px;color:var(--red);cursor:pointer;border:1px solid var(--red);
+    border-radius:6px;padding:4px 8px;white-space:nowrap;
+  }
+
+  /* GESTÃO DE JOGOS */
+  .gestao-row{
+    background:var(--card);border:1px solid #1f3a63;border-radius:10px;
+    padding:14px 16px;margin-bottom:10px;
+    display:flex;align-items:center;gap:14px;flex-wrap:wrap;
+  }
+  .gestao-row .teams{flex:1;min-width:180px;font-size:15px;}
+  .gestao-row .data-fase{font-size:11px;color:var(--gray);margin-top:2px;}
+  .gestao-row select{
+    background:var(--navy);color:var(--cream);border:1px solid #1f3a63;
+    border-radius:6px;padding:6px 8px;font-size:13px;font-family:'Inter',sans-serif;
+  }
+  .gestao-row .score-input input{width:46px;}
+  .gestao-row .live-flag{
+    font-size:11px;color:var(--red);display:flex;align-items:center;gap:5px;
+  }
+  .gestao-row .live-flag .live-dot-static{
+    width:8px;height:8px;border-radius:50%;background:var(--red);
+  }
+
+  /* MODAL */
+  .modal-overlay{
+    display:none;position:fixed;inset:0;background:rgba(0,0,0,0.6);
+    z-index:100;align-items:center;justify-content:center;padding:20px;
+  }
+  .modal-overlay.open{display:flex;}
+  .modal-box{
+    background:var(--navy-light);border:1px solid var(--gold);border-radius:12px;
+    max-width:640px;width:100%;max-height:85vh;overflow-y:auto;padding:20px;
+  }
+  .modal-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;}
+  .jornada-header{
+    font-family:'Bebas Neue',sans-serif;color:var(--gold);font-size:16px;letter-spacing:1px;
+    margin:18px 0 8px;border-bottom:1px solid #1f3a63;padding-bottom:4px;
+  }
+  .jornada-header:first-child{margin-top:0;}
+  .resultado-box{
+    background:var(--card);border:1px solid #1f3a63;border-radius:8px;
+    padding:10px 14px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;
+  }
+  .resultado-box .grupo-tag{font-size:11px;color:var(--gray);}
+  .resultado-box .score{font-family:'Roboto Mono',monospace;font-weight:700;color:var(--gold);font-size:18px;}
+
+  /* PIN */
+  .pin-bar{
+    display:flex;align-items:center;gap:10px;flex-wrap:wrap;
+    background:var(--card);border:1px solid var(--gold);border-radius:8px;
+    padding:10px 14px;margin-bottom:16px;
+  }
+  .pin-bar input{
+    width:90px;background:var(--navy);color:var(--cream);border:1px solid #1f3a63;
+    border-radius:6px;padding:8px;font-family:'Roboto Mono',monospace;text-align:center;letter-spacing:2px;
+  }
+  .pin-bar .pin-msg{font-size:12px;color:var(--red);}
+  .pin-locked-note{font-size:11px;color:var(--gray);margin-bottom:10px;}
+
+  footer{
+    text-align:center;font-size:12px;color:var(--gray);
+    padding:24px;border-top:1px solid #1f3a63;
+  }
+  @media(max-width:600px){
+    header h1{font-size:24px;}
+    .palpite-grid{gap:10px;}
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>⚽ Mundial 2026 <span class="sub">— Troublemaker Bethouse</span></h1>
+  <div class="sub" id="sync-status" style="margin-top:4px;color:var(--gold);">A ligar ao Firebase…</div>
+  <div class="ticker" id="ticker"></div>
+</header>
+
+<nav>
+  <button class="active" data-tab="classificacao">Classificação</button>
+  <button data-tab="disputados">Jogos Disputados</button>
+  <button data-tab="gestao">Gestão de jogos</button>
+  <button data-tab="perfis">Perfis de jogador</button>
+  <button data-tab="regras">Regras</button>
+</nav>
+
+<main>
+
+  <section id="classificacao" class="active">
+    <h2 style="margin-bottom:14px;">Tabela da liga</h2>
+    <table>
+      <thead>
+        <tr><th>#</th><th>Jogador</th><th class="num">Resultados certos</th><th class="num">Tendências certas</th><th class="num">Joker usado</th><th class="num">Pontos</th></tr>
+      </thead>
+      <tbody id="tabela-classificacao"></tbody>
+    </table>
+  </section>
+
+  <section id="disputados">
+    <h2 style="margin-bottom:6px;">Jogos disputados</h2>
+    <p style="color:var(--gray);font-size:13px;margin-bottom:16px;">
+      Resultados efetivos dos jogos já terminados, separados por jornada.
+    </p>
+    <div id="lista-disputados"></div>
+  </section>
+
+  <section id="gestao">
+    <h2 style="margin-bottom:6px;">Gestão de jogos</h2>
+    <p style="color:var(--gray);font-size:13px;margin-bottom:16px;">
+      Adiciona novos jogos confirmados ao calendário e atualiza os resultados — em direto, durante o jogo, ou o resultado final.
+      A classificação e os pontos de todos os jogadores são recalculados automaticamente.
+    </p>
+
+    <div class="pin-bar" id="pin-bar-gestao">
+      🔒 Secção protegida — introduz o PIN para editar:
+      <input type="password" id="pin-gestao" maxlength="4" placeholder="PIN" onkeydown="if(event.key==='Enter') desbloquear('gestao')">
+      <button type="button" class="save-btn" onclick="desbloquear('gestao')">Desbloquear</button>
+      <span class="pin-msg" id="pin-msg-gestao"></span>
+    </div>
+
+    <div class="profile-form" style="margin-bottom:24px;">
+      <h3 style="margin-bottom:10px;font-size:16px;color:var(--gold);">Adicionar novo jogo confirmado</h3>
+      <div class="form-row">
+        <div>
+          <label>Equipa da casa</label>
+          <input type="text" id="gj-casa" placeholder="ex.: Brasil">
+        </div>
+        <div>
+          <label>Equipa visitante</label>
+          <input type="text" id="gj-fora" placeholder="ex.: Croácia">
+        </div>
+        <div>
+          <label>Data / fase</label>
+          <input type="text" id="gj-data" placeholder="ex.: Fase de grupos — Jornada 2">
+        </div>
+      </div>
+      <button class="save-btn" onclick="adicionarJogo()">Adicionar jogo</button>
+      <span class="save-msg" id="gestao-msg" style="display:none;">Jogo adicionado ✓</span>
+    </div>
+
+    <h3 style="margin-bottom:10px;font-size:16px;color:var(--gold);">Jogos do calendário</h3>
+    <div class="form-row" style="margin-bottom:10px;max-width:240px;">
+      <div>
+        <label>Filtrar por jornada</label>
+        <select id="filtro-jornada" onchange="renderGestaoJogos()">
+          <option value="todas">Todas as jornadas</option>
+          <option value="1">Jornada 1</option>
+          <option value="2">Jornada 2</option>
+          <option value="3">Jornada 3</option>
+        </select>
+      </div>
+    </div>
+    <div id="lista-gestao"></div>
+  </section>
+
+  <section id="perfis">
+    <h2 style="margin-bottom:6px;">Criar perfil de jogador</h2>
+    <p style="color:var(--gray);font-size:13px;margin-bottom:16px;">
+      Indica o nome do jogador e a equipa favorita. Os palpites podem ser definidos depois através do botão "Consultar palpites" no card do jogador.
+    </p>
+
+    <div class="pin-bar" id="pin-bar-perfis">
+      🔒 Secção protegida — introduz o PIN para editar:
+      <input type="password" id="pin-perfis" maxlength="4" placeholder="PIN" onkeydown="if(event.key==='Enter') desbloquear('perfis')">
+      <button type="button" class="save-btn" onclick="desbloquear('perfis')">Desbloquear</button>
+      <span class="pin-msg" id="pin-msg-perfis"></span>
+    </div>
+
+    <div class="profile-form">
+      <div class="form-row">
+        <div>
+          <label>Nome do jogador</label>
+          <input type="text" id="novo-nome" placeholder="ex.: Sofia">
+        </div>
+        <div>
+          <label>Equipa favorita</label>
+          <select id="novo-favorita"></select>
+        </div>
+      </div>
+
+      <button class="save-btn" onclick="criarPerfil()">Criar perfil</button>
+      <span class="save-msg" id="perfil-msg" style="display:none;">Perfil criado ✓</span>
+    </div>
+
+    <h2 style="margin:28px 0 14px;">Jogadores da liga</h2>
+    <div class="profile-grid" id="profile-grid"></div>
+  </section>
+
+  <!-- Modal de palpites -->
+  <div id="modal-overlay" class="modal-overlay" onclick="if(event.target===this) fecharPalpitesModal()">
+    <div class="modal-box">
+      <div class="modal-head">
+        <h2 id="modal-titulo" style="margin:0;"></h2>
+        <span class="remove-link" onclick="fecharPalpitesModal()">fechar ✕</span>
+      </div>
+      <div id="modal-conteudo"></div>
+    </div>
+  </div>
+
+  <section id="regras">
+    <h2 style="margin-bottom:14px;">Regras de pontuação</h2>
+    <p style="color:var(--gray);font-size:13px;margin-bottom:16px;">
+      Apenas o administrador da liga deve alterar estes valores. As alterações aplicam-se a partir do próximo recálculo.
+    </p>
+
+    <div class="pin-bar" id="pin-bar-regras">
+      🔒 Secção protegida — introduz o PIN para editar:
+      <input type="password" id="pin-regras" maxlength="4" placeholder="PIN" onkeydown="if(event.key==='Enter') desbloquear('regras')">
+      <button type="button" class="save-btn" onclick="desbloquear('regras')">Desbloquear</button>
+      <span class="pin-msg" id="pin-msg-regras"></span>
+    </div>
+
+    <div class="regra-row">
+      <div>
+        <div class="regra-label">Resultado exato certo</div>
+        <div class="regra-desc">O palpite acerta o resultado final (ex.: 2-1 e o jogo termina 2-1)</div>
+      </div>
+      <input type="number" id="r-resultado" min="0">
+    </div>
+
+    <div class="regra-row">
+      <div>
+        <div class="regra-label">Tendência certa</div>
+        <div class="regra-desc">Acerta o vencedor (ou empate) mas não o resultado exato</div>
+      </div>
+      <input type="number" id="r-tendencia" min="0">
+    </div>
+
+    <div class="regra-row">
+      <div>
+        <div class="regra-label">Sem acerto</div>
+        <div class="regra-desc">Não acerta resultado nem tendência</div>
+      </div>
+      <input type="number" id="r-falha" min="0">
+    </div>
+
+    <div class="regra-row">
+      <div>
+        <div class="regra-label">Multiplicador Joker</div>
+        <div class="regra-desc">Duplica os pontos do jogo escolhido como joker — 1 utilização por jogador em toda a competição</div>
+      </div>
+      <input type="number" id="r-joker" min="1" step="0.5">
+    </div>
+
+    <div class="regra-row">
+      <div>
+        <div class="regra-label">Bónus equipa favorita</div>
+        <div class="regra-desc">Pontos extra sempre que a equipa marcada como "favorita" pelo jogador avança de fase</div>
+      </div>
+      <input type="number" id="r-bonus" min="0">
+    </div>
+
+    <button class="save-btn" onclick="guardarRegras()">Guardar regras</button>
+    <span class="save-msg" id="save-msg" style="display:none;">Regras guardadas ✓</span>
+  </section>
+
+</main>
+
+<footer>
+  Protótipo estático — dados de exemplo. Liga regras + palpites a uma base de dados (ex. Firebase) e os resultados a uma API de futebol para funcionamento em direto real.
+</footer>
+
+<script>
+/* =========================================================
+   DADOS DE EXEMPLO
+   Numa versão real:
+   - "jogos" viria de uma API de futebol (ex. API-Football),
+     atualizada periodicamente por uma Cloud Function.
+   - "jogadores" e "palpites" viriam do Firebase Realtime DB.
+   - "regras" viria do Firebase, editável apenas pelo admin.
+========================================================= */
+
+const REGRAS_DEFAULT = {
+  resultado: 5,
+  tendencia: 2,
+  falha: 0,
+  joker: 2,
+  bonus: 3
+};
+
+let regras = JSON.parse(localStorage.getItem('regrasFantasy')) || REGRAS_DEFAULT;
+
+const jogos = [
+  { id: 1, casa: 'México', fora: 'África do Sul', grupo: 'A', jornada: 1, data: 'Grupo A — Jornada 1', status: 'final', resultadoCasa: 2, resultadoFora: 0, favoritaPassouFase: {} },
+  { id: 2, casa: 'Coreia do Sul', fora: 'Chéquia', grupo: 'A', jornada: 1, data: 'Grupo A — Jornada 1', status: 'agendado', resultadoCasa: null, resultadoFora: null, favoritaPassouFase: {} },
+  { id: 3, casa: 'Canadá', fora: 'Bósnia e Herzegovina', grupo: 'B', jornada: 1, data: 'Grupo B — Jornada 1', status: 'agendado', resultadoCasa: null, resultadoFora: null, favoritaPassouFase: {} },
+  { id: 4, casa: 'Estados Unidos', fora: 'Paraguai', grupo: 'D', jornada: 1, data: 'Grupo D — Jornada 1', status: 'agendado', resultadoCasa: null, resultadoFora: null, favoritaPassouFase: {} },
+  { id: 5, casa: 'Catar', fora: 'Suíça', grupo: 'B', jornada: 1, data: 'Grupo B — Jornada 1', status: 'agendado', resultadoCasa: null, resultadoFora: null, favoritaPassouFase: {} },
+  { id: 6, casa: 'Brasil', fora: 'Marrocos', grupo: 'C', jornada: 1, data: 'Grupo C — Jornada 1', status: 'agendado', resultadoCasa: null, resultadoFora: null, favoritaPassouFase: {} },
+  { id: 7, casa: 'Haiti', fora: 'Escócia', grupo: 'C', jornada: 1, data: 'Grupo C — Jornada 1', status: 'agendado', resultadoCasa: null, resultadoFora: null, favoritaPassouFase: {} },
+  { id: 8, casa: 'Austrália', fora: 'Turquia', grupo: 'D', jornada: 1, data: 'Grupo D — Jornada 1', status: 'agendado', resultadoCasa: null, resultadoFora: null, favoritaPassouFase: {} },
+  { id: 9, casa: 'Alemanha', fora: 'Curaçao', grupo: 'E', jornada: 1, data: 'Grupo E — Jornada 1', status: 'agendado', resultadoCasa: null, resultadoFora: null, favoritaPassouFase: {} },
+  { id: 10, casa: 'Países Baixos', fora: 'Japão', grupo: 'F', jornada: 1, data: 'Grupo F — Jornada 1', status: 'agendado', resultadoCasa: null, resultadoFora: null, favoritaPassouFase: {} },
+  { id: 11, casa: 'Costa do Marfim', fora: 'Equador', grupo: 'E', jornada: 1, data: 'Grupo E — Jornada 1', status: 'agendado', resultadoCasa: null, resultadoFora: null, favoritaPassouFase: {} },
+  { id: 12, casa: 'Suécia', fora: 'Tunísia', grupo: 'F', jornada: 1, data: 'Grupo F — Jornada 1', status: 'agendado', resultadoCasa: null, resultadoFora: null, favoritaPassouFase: {} },
+  { id: 13, casa: 'Espanha', fora: 'Cabo Verde', grupo: 'H', jornada: 1, data: 'Grupo H — Jornada 1', status: 'agendado', resultadoCasa: null, resultadoFora: null, favoritaPassouFase: {} },
+  { id: 14, casa: 'Bélgica', fora: 'Egito', grupo: 'G', jornada: 1, data: 'Grupo G — Jornada 1', status: 'agendado', resultadoCasa: null, resultadoFora: null, favoritaPassouFase: {} },
+  { id: 15, casa: 'Arábia Saudita', fora: 'Uruguai', grupo: 'H', jornada: 1, data: 'Grupo H — Jornada 1', status: 'agendado', resultadoCasa: null, resultadoFora: null, favoritaPassouFase: {} },
+  { id: 16, casa: 'Irão', fora: 'Nova Zelândia', grupo: 'G', jornada: 1, data: 'Grupo G — Jornada 1', status: 'agendado', resultadoCasa: null, resultadoFora: null, favoritaPassouFase: {} },
+  { id: 17, casa: 'França', fora: 'Senegal', grupo: 'I', jornada: 1, data: 'Grupo I — Jornada 1', status: 'agendado', resultadoCasa: null, resultadoFora: null, favoritaPassouFase: {} },
+  { id: 18, casa: 'Iraque', fora: 'Noruega', grupo: 'I', jornada: 1, data: 'Grupo I — Jornada 1', status: 'agendado', resultadoCasa: null, resultadoFora: null, favoritaPassouFase: {} },
+  { id: 19, casa: 'Argentina', fora: 'Argélia', grupo: 'J', jornada: 1, data: 'Grupo J — Jornada 1', status: 'agendado', resultadoCasa: null, resultadoFora: null, favoritaPassouFase: {} },
+  { id: 20, casa: 'Áustria', fora: 'Jordânia', grupo: 'J', jornada: 1, data: 'Grupo J — Jornada 1', status: 'agendado', resultadoCasa: null, resultadoFora: null, favoritaPassouFase: {} },
+  { id: 21, casa: 'Portugal', fora: 'RD Congo', grupo: 'K', jornada: 1, data: 'Grupo K — Jornada 1', status: 'agendado', resultadoCasa: null, resultadoFora: null, favoritaPassouFase: {} },
+  { id: 22, casa: 'Inglaterra', fora: 'Croácia', grupo: 'L', jornada: 1, data: 'Grupo L — Jornada 1', status: 'agendado', resultadoCasa: null, resultadoFora: null, favoritaPassouFase: {} },
+  { id: 23, casa: 'Gana', fora: 'Panamá', grupo: 'L', jornada: 1, data: 'Grupo L — Jornada 1', status: 'agendado', resultadoCasa: null, resultadoFora: null, favoritaPassouFase: {} },
+  { id: 24, casa: 'Uzbequistão', fora: 'Colômbia', grupo: 'K', jornada: 1, data: 'Grupo K — Jornada 1', status: 'agendado', resultadoCasa: null, resultadoFora: null, favoritaPassouFase: {} },
+  { id: 25, casa: 'Chéquia', fora: 'África do Sul', grupo: 'A', jornada: 2, data: 'Grupo A — Jornada 2', status: 'agendado', resultadoCasa: null, resultadoFora: null, favoritaPassouFase: {} },
+  { id: 26, casa: 'Suíça', fora: 'Bósnia e Herzegovina', grupo: 'B', jornada: 2, data: 'Grupo B — Jornada 2', status: 'agendado', resultadoCasa: null, resultadoFora: null, favoritaPassouFase: {} },
+  { id: 27, casa: 'Canadá', fora: 'Catar', grupo: 'B', jornada: 2, data: 'Grupo B — Jornada 2', status: 'agendado', resultadoCasa: null, resultadoFora: null, favoritaPassouFase: {} },
+  { id: 28, casa: 'México', fora: 'Coreia do Sul', grupo: 'A', jornada: 2, data: 'Grupo A — Jornada 2', status: 'agendado', resultadoCasa: null, resultadoFora: null, favoritaPassouFase: {} },
+  { id: 29, casa: 'Estados Unidos', fora: 'Austrália', grupo: 'D', jornada: 2, data: 'Grupo D — Jornada 2', status: 'agendado', resultadoCasa: null, resultadoFora: null, favoritaPassouFase: {} },
+  { id: 30, casa: 'Escócia', fora: 'Marrocos', grupo: 'C', jornada: 2, data: 'Grupo C — Jornada 2', status: 'agendado', resultadoCasa: null, resultadoFora: null, favoritaPassouFase: {} },
+  { id: 31, casa: 'Brasil', fora: 'Haiti', grupo: 'C', jornada: 2, data: 'Grupo C — Jornada 2', status: 'agendado', resultadoCasa: null, resultadoFora: null, favoritaPassouFase: {} },
+  { id: 32, casa: 'Turquia', fora: 'Paraguai', grupo: 'D', jornada: 2, data: 'Grupo D — Jornada 2', status: 'agendado', resultadoCasa: null, resultadoFora: null, favoritaPassouFase: {} },
+  { id: 33, casa: 'Países Baixos', fora: 'Suécia', grupo: 'F', jornada: 2, data: 'Grupo F — Jornada 2', status: 'agendado', resultadoCasa: null, resultadoFora: null, favoritaPassouFase: {} },
+  { id: 34, casa: 'Alemanha', fora: 'Costa do Marfim', grupo: 'F', jornada: 2, data: 'Grupo F — Jornada 2', status: 'agendado', resultadoCasa: null, resultadoFora: null, favoritaPassouFase: {} },
+  { id: 35, casa: 'Equador', fora: 'Curaçao', grupo: 'E', jornada: 2, data: 'Grupo E — Jornada 2', status: 'agendado', resultadoCasa: null, resultadoFora: null, favoritaPassouFase: {} },
+  { id: 36, casa: 'Tunísia', fora: 'Japão', grupo: 'F', jornada: 2, data: 'Grupo F — Jornada 2', status: 'agendado', resultadoCasa: null, resultadoFora: null, favoritaPassouFase: {} },
+  { id: 37, casa: 'Espanha', fora: 'Arábia Saudita', grupo: 'H', jornada: 2, data: 'Grupo H — Jornada 2', status: 'agendado', resultadoCasa: null, resultadoFora: null, favoritaPassouFase: {} },
+  { id: 38, casa: 'Bélgica', fora: 'Irão', grupo: 'G', jornada: 2, data: 'Grupo G — Jornada 2', status: 'agendado', resultadoCasa: null, resultadoFora: null, favoritaPassouFase: {} },
+  { id: 39, casa: 'Uruguai', fora: 'Cabo Verde', grupo: 'H', jornada: 2, data: 'Grupo H — Jornada 2', status: 'agendado', resultadoCasa: null, resultadoFora: null, favoritaPassouFase: {} },
+  { id: 40, casa: 'Nova Zelândia', fora: 'Egito', grupo: 'G', jornada: 2, data: 'Grupo G — Jornada 2', status: 'agendado', resultadoCasa: null, resultadoFora: null, favoritaPassouFase: {} },
+  { id: 41, casa: 'Argentina', fora: 'Áustria', grupo: 'J', jornada: 2, data: 'Grupo J — Jornada 2', status: 'agendado', resultadoCasa: null, resultadoFora: null, favoritaPassouFase: {} },
+  { id: 42, casa: 'França', fora: 'Iraque', grupo: 'I', jornada: 2, data: 'Grupo I — Jornada 2', status: 'agendado', resultadoCasa: null, resultadoFora: null, favoritaPassouFase: {} },
+  { id: 43, casa: 'Noruega', fora: 'Senegal', grupo: 'I', jornada: 2, data: 'Grupo I — Jornada 2', status: 'agendado', resultadoCasa: null, resultadoFora: null, favoritaPassouFase: {} },
+  { id: 44, casa: 'Jordânia', fora: 'Argélia', grupo: 'J', jornada: 2, data: 'Grupo J — Jornada 2', status: 'agendado', resultadoCasa: null, resultadoFora: null, favoritaPassouFase: {} },
+  { id: 45, casa: 'Portugal', fora: 'Uzbequistão', grupo: 'K', jornada: 2, data: 'Grupo K — Jornada 2', status: 'agendado', resultadoCasa: null, resultadoFora: null, favoritaPassouFase: {} },
+  { id: 46, casa: 'Inglaterra', fora: 'Gana', grupo: 'L', jornada: 2, data: 'Grupo L — Jornada 2', status: 'agendado', resultadoCasa: null, resultadoFora: null, favoritaPassouFase: {} },
+  { id: 47, casa: 'Panamá', fora: 'Croácia', grupo: 'L', jornada: 2, data: 'Grupo L — Jornada 2', status: 'agendado', resultadoCasa: null, resultadoFora: null, favoritaPassouFase: {} },
+  { id: 48, casa: 'Colômbia', fora: 'RD Congo', grupo: 'K', jornada: 2, data: 'Grupo K — Jornada 2', status: 'agendado', resultadoCasa: null, resultadoFora: null, favoritaPassouFase: {} },
+  { id: 49, casa: 'Suíça', fora: 'Canadá', grupo: 'B', jornada: 3, data: 'Grupo B — Jornada 3', status: 'agendado', resultadoCasa: null, resultadoFora: null, favoritaPassouFase: {} },
+  { id: 50, casa: 'Bósnia e Herzegovina', fora: 'Catar', grupo: 'B', jornada: 3, data: 'Grupo B — Jornada 3', status: 'agendado', resultadoCasa: null, resultadoFora: null, favoritaPassouFase: {} },
+  { id: 51, casa: 'Marrocos', fora: 'Haiti', grupo: 'C', jornada: 3, data: 'Grupo C — Jornada 3', status: 'agendado', resultadoCasa: null, resultadoFora: null, favoritaPassouFase: {} },
+  { id: 52, casa: 'Escócia', fora: 'Brasil', grupo: 'C', jornada: 3, data: 'Grupo C — Jornada 3', status: 'agendado', resultadoCasa: null, resultadoFora: null, favoritaPassouFase: {} },
+  { id: 53, casa: 'África do Sul', fora: 'Coreia do Sul', grupo: 'A', jornada: 3, data: 'Grupo A — Jornada 3', status: 'agendado', resultadoCasa: null, resultadoFora: null, favoritaPassouFase: {} },
+  { id: 54, casa: 'Chéquia', fora: 'México', grupo: 'A', jornada: 3, data: 'Grupo A — Jornada 3', status: 'agendado', resultadoCasa: null, resultadoFora: null, favoritaPassouFase: {} },
+  { id: 55, casa: 'Curaçao', fora: 'Costa do Marfim', grupo: 'E', jornada: 3, data: 'Grupo E — Jornada 3', status: 'agendado', resultadoCasa: null, resultadoFora: null, favoritaPassouFase: {} },
+  { id: 56, casa: 'Equador', fora: 'Alemanha', grupo: 'E', jornada: 3, data: 'Grupo E — Jornada 3', status: 'agendado', resultadoCasa: null, resultadoFora: null, favoritaPassouFase: {} },
+  { id: 57, casa: 'Tunísia', fora: 'Países Baixos', grupo: 'F', jornada: 3, data: 'Grupo F — Jornada 3', status: 'agendado', resultadoCasa: null, resultadoFora: null, favoritaPassouFase: {} },
+  { id: 58, casa: 'Japão', fora: 'Suécia', grupo: 'F', jornada: 3, data: 'Grupo F — Jornada 3', status: 'agendado', resultadoCasa: null, resultadoFora: null, favoritaPassouFase: {} },
+  { id: 59, casa: 'Turquia', fora: 'Estados Unidos', grupo: 'D', jornada: 3, data: 'Grupo D — Jornada 3', status: 'agendado', resultadoCasa: null, resultadoFora: null, favoritaPassouFase: {} },
+  { id: 60, casa: 'Paraguai', fora: 'Austrália', grupo: 'D', jornada: 3, data: 'Grupo D — Jornada 3', status: 'agendado', resultadoCasa: null, resultadoFora: null, favoritaPassouFase: {} },
+  { id: 61, casa: 'Noruega', fora: 'França', grupo: 'I', jornada: 3, data: 'Grupo I — Jornada 3', status: 'agendado', resultadoCasa: null, resultadoFora: null, favoritaPassouFase: {} },
+  { id: 62, casa: 'Senegal', fora: 'Iraque', grupo: 'I', jornada: 3, data: 'Grupo I — Jornada 3', status: 'agendado', resultadoCasa: null, resultadoFora: null, favoritaPassouFase: {} },
+  { id: 63, casa: 'Cabo Verde', fora: 'Arábia Saudita', grupo: 'H', jornada: 3, data: 'Grupo H — Jornada 3', status: 'agendado', resultadoCasa: null, resultadoFora: null, favoritaPassouFase: {} },
+  { id: 64, casa: 'Uruguai', fora: 'Espanha', grupo: 'H', jornada: 3, data: 'Grupo H — Jornada 3', status: 'agendado', resultadoCasa: null, resultadoFora: null, favoritaPassouFase: {} },
+  { id: 65, casa: 'Nova Zelândia', fora: 'Bélgica', grupo: 'G', jornada: 3, data: 'Grupo G — Jornada 3', status: 'agendado', resultadoCasa: null, resultadoFora: null, favoritaPassouFase: {} },
+  { id: 66, casa: 'Egito', fora: 'Irão', grupo: 'G', jornada: 3, data: 'Grupo G — Jornada 3', status: 'agendado', resultadoCasa: null, resultadoFora: null, favoritaPassouFase: {} },
+  { id: 67, casa: 'Panamá', fora: 'Inglaterra', grupo: 'L', jornada: 3, data: 'Grupo L — Jornada 3', status: 'agendado', resultadoCasa: null, resultadoFora: null, favoritaPassouFase: {} },
+  { id: 68, casa: 'Croácia', fora: 'Gana', grupo: 'L', jornada: 3, data: 'Grupo L — Jornada 3', status: 'agendado', resultadoCasa: null, resultadoFora: null, favoritaPassouFase: {} },
+  { id: 69, casa: 'Colômbia', fora: 'Portugal', grupo: 'K', jornada: 3, data: 'Grupo K — Jornada 3', status: 'agendado', resultadoCasa: null, resultadoFora: null, favoritaPassouFase: {} },
+  { id: 70, casa: 'RD Congo', fora: 'Uzbequistão', grupo: 'K', jornada: 3, data: 'Grupo K — Jornada 3', status: 'agendado', resultadoCasa: null, resultadoFora: null, favoritaPassouFase: {} },
+  { id: 71, casa: 'Argélia', fora: 'Áustria', grupo: 'J', jornada: 3, data: 'Grupo J — Jornada 3', status: 'agendado', resultadoCasa: null, resultadoFora: null, favoritaPassouFase: {} },
+  { id: 72, casa: 'Jordânia', fora: 'Argentina', grupo: 'J', jornada: 3, data: 'Grupo J — Jornada 3', status: 'agendado', resultadoCasa: null, resultadoFora: null, favoritaPassouFase: {} }
+];
+
+let jogadores = [
+  'André "Ginac"',
+  'Davide "Beckham"',
+  'Filipe "Luis"',
+  'Gabriel "Batistuta"',
+  'Luis Jesus "Suarez"',
+  'Luis "Enrique"',
+  'Paulo "Futre"',
+  'Pedro "Falcão"',
+  'Pedro K "Pauleta"',
+  'Pedro Sousa',
+  'Tomé "Fernando"'
+];
+
+let palpites = {};
+palpites['André "Ginac"'] = { 1: { casa: 0, fora: 0, joker: false }, 2: { casa: 0, fora: 0, joker: false }, 3: { casa: 0, fora: 0, joker: false }, 4: { casa: 0, fora: 0, joker: false }, 5: { casa: 0, fora: 0, joker: false }, 6: { casa: 0, fora: 0, joker: false }, 7: { casa: 0, fora: 0, joker: false }, 8: { casa: 0, fora: 0, joker: false }, 9: { casa: 0, fora: 0, joker: false }, 10: { casa: 0, fora: 0, joker: false }, 11: { casa: 0, fora: 0, joker: false }, 12: { casa: 0, fora: 0, joker: false }, 13: { casa: 0, fora: 0, joker: false }, 14: { casa: 0, fora: 0, joker: false }, 15: { casa: 0, fora: 0, joker: false }, 16: { casa: 0, fora: 0, joker: false }, 17: { casa: 0, fora: 0, joker: false }, 18: { casa: 0, fora: 0, joker: false }, 19: { casa: 0, fora: 0, joker: false }, 20: { casa: 0, fora: 0, joker: false }, 21: { casa: 0, fora: 0, joker: false }, 22: { casa: 0, fora: 0, joker: false }, 23: { casa: 0, fora: 0, joker: false }, 24: { casa: 0, fora: 0, joker: false }, 25: { casa: 0, fora: 0, joker: false }, 26: { casa: 0, fora: 0, joker: false }, 27: { casa: 0, fora: 0, joker: false }, 28: { casa: 0, fora: 0, joker: false }, 29: { casa: 0, fora: 0, joker: false }, 30: { casa: 0, fora: 0, joker: false }, 31: { casa: 0, fora: 0, joker: false }, 32: { casa: 0, fora: 0, joker: false }, 33: { casa: 0, fora: 0, joker: false }, 34: { casa: 0, fora: 0, joker: false }, 35: { casa: 0, fora: 0, joker: false }, 36: { casa: 0, fora: 0, joker: false }, 37: { casa: 0, fora: 0, joker: false }, 38: { casa: 0, fora: 0, joker: false }, 39: { casa: 0, fora: 0, joker: false }, 40: { casa: 0, fora: 0, joker: false }, 41: { casa: 0, fora: 0, joker: false }, 42: { casa: 0, fora: 0, joker: false }, 43: { casa: 0, fora: 0, joker: false }, 44: { casa: 0, fora: 0, joker: false }, 45: { casa: 0, fora: 0, joker: false }, 46: { casa: 0, fora: 0, joker: false }, 47: { casa: 0, fora: 0, joker: false }, 48: { casa: 0, fora: 0, joker: false }, 49: { casa: 0, fora: 0, joker: false }, 50: { casa: 0, fora: 0, joker: false }, 51: { casa: 0, fora: 0, joker: false }, 52: { casa: 0, fora: 0, joker: false }, 53: { casa: 0, fora: 0, joker: false }, 54: { casa: 0, fora: 0, joker: false }, 55: { casa: 0, fora: 0, joker: false }, 56: { casa: 0, fora: 0, joker: false }, 57: { casa: 0, fora: 0, joker: false }, 58: { casa: 0, fora: 0, joker: false }, 59: { casa: 0, fora: 0, joker: false }, 60: { casa: 0, fora: 0, joker: false }, 61: { casa: 0, fora: 0, joker: false }, 62: { casa: 0, fora: 0, joker: false }, 63: { casa: 0, fora: 0, joker: false }, 64: { casa: 0, fora: 0, joker: false }, 65: { casa: 0, fora: 0, joker: false }, 66: { casa: 0, fora: 0, joker: false }, 67: { casa: 0, fora: 0, joker: false }, 68: { casa: 0, fora: 0, joker: false }, 69: { casa: 0, fora: 0, joker: false }, 70: { casa: 0, fora: 0, joker: false }, 71: { casa: 0, fora: 0, joker: false }, 72: { casa: 0, fora: 0, joker: false } };
+palpites['Davide "Beckham"'] = { 1: { casa: 2, fora: 0, joker: false }, 2: { casa: 2, fora: 1, joker: false }, 3: { casa: 2, fora: 2, joker: false }, 4: { casa: 1, fora: 1, joker: false }, 5: { casa: 0, fora: 3, joker: false }, 6: { casa: 2, fora: 1, joker: false }, 7: { casa: 0, fora: 2, joker: false }, 8: { casa: 1, fora: 2, joker: false }, 9: { casa: 4, fora: 0, joker: false }, 10: { casa: 2, fora: 1, joker: false }, 11: { casa: 1, fora: 1, joker: false }, 12: { casa: 2, fora: 0, joker: false }, 13: { casa: 5, fora: 0, joker: false }, 14: { casa: 3, fora: 1, joker: false }, 15: { casa: 0, fora: 1, joker: false }, 16: { casa: 1, fora: 1, joker: false }, 17: { casa: 4, fora: 1, joker: false }, 18: { casa: 0, fora: 3, joker: false }, 19: { casa: 2, fora: 1, joker: false }, 20: { casa: 2, fora: 0, joker: false }, 21: { casa: 2, fora: 1, joker: false }, 22: { casa: 3, fora: 2, joker: false }, 23: { casa: 2, fora: 0, joker: false }, 24: { casa: 0, fora: 3, joker: false }, 25: { casa: 1, fora: 0, joker: false }, 26: { casa: 2, fora: 0, joker: false }, 27: { casa: 2, fora: 1, joker: false }, 28: { casa: 1, fora: 1, joker: false }, 29: { casa: 2, fora: 0, joker: false }, 30: { casa: 0, fora: 2, joker: false }, 31: { casa: 4, fora: 0, joker: false }, 32: { casa: 1, fora: 0, joker: false }, 33: { casa: 2, fora: 2, joker: false }, 34: { casa: 2, fora: 0, joker: false }, 35: { casa: 3, fora: 0, joker: false }, 36: { casa: 1, fora: 1, joker: false }, 37: { casa: 3, fora: 0, joker: false }, 38: { casa: 3, fora: 0, joker: false }, 39: { casa: 2, fora: 0, joker: false }, 40: { casa: 0, fora: 2, joker: false }, 41: { casa: 2, fora: 0, joker: false }, 42: { casa: 5, fora: 0, joker: false }, 43: { casa: 3, fora: 2, joker: false }, 44: { casa: 0, fora: 2, joker: false }, 45: { casa: 4, fora: 1, joker: false }, 46: { casa: 3, fora: 0, joker: false }, 47: { casa: 1, fora: 3, joker: false }, 48: { casa: 2, fora: 2, joker: false }, 49: { casa: 0, fora: 0, joker: false }, 50: { casa: 3, fora: 0, joker: false }, 51: { casa: 4, fora: 0, joker: false }, 52: { casa: 1, fora: 1, joker: false }, 53: { casa: 1, fora: 2, joker: false }, 54: { casa: 0, fora: 1, joker: false }, 55: { casa: 0, fora: 3, joker: false }, 56: { casa: 1, fora: 1, joker: false }, 57: { casa: 0, fora: 3, joker: false }, 58: { casa: 1, fora: 2, joker: false }, 59: { casa: 1, fora: 1, joker: false }, 60: { casa: 2, fora: 0, joker: false }, 61: { casa: 0, fora: 2, joker: false }, 62: { casa: 1, fora: 0, joker: false }, 63: { casa: 0, fora: 3, joker: false }, 64: { casa: 1, fora: 1, joker: false }, 65: { casa: 0, fora: 2, joker: false }, 66: { casa: 0, fora: 0, joker: false }, 67: { casa: 0, fora: 5, joker: false }, 68: { casa: 1, fora: 0, joker: false }, 69: { casa: 2, fora: 2, joker: false }, 70: { casa: 1, fora: 1, joker: false }, 71: { casa: 1, fora: 2, joker: false }, 72: { casa: 0, fora: 3, joker: false } };
+palpites['Filipe "Luis"'] = { 1: { casa: 0, fora: 0, joker: false }, 2: { casa: 2, fora: 1, joker: false }, 3: { casa: 0, fora: 1, joker: false }, 4: { casa: 1, fora: 1, joker: false }, 5: { casa: 0, fora: 2, joker: false }, 6: { casa: 2, fora: 1, joker: false }, 7: { casa: 0, fora: 5, joker: false }, 8: { casa: 0, fora: 1, joker: false }, 9: { casa: 5, fora: 0, joker: false }, 10: { casa: 3, fora: 2, joker: false }, 11: { casa: 0, fora: 0, joker: false }, 12: { casa: 2, fora: 0, joker: false }, 13: { casa: 4, fora: 0, joker: false }, 14: { casa: 3, fora: 1, joker: false }, 15: { casa: 0, fora: 1, joker: false }, 16: { casa: 1, fora: 1, joker: false }, 17: { casa: 2, fora: 0, joker: false }, 18: { casa: 0, fora: 4, joker: false }, 19: { casa: 2, fora: 0, joker: false }, 20: { casa: 3, fora: 0, joker: false }, 21: { casa: 4, fora: 0, joker: false }, 22: { casa: 2, fora: 1, joker: false }, 23: { casa: 1, fora: 1, joker: false }, 24: { casa: 0, fora: 5, joker: false }, 25: { casa: 2, fora: 0, joker: false }, 26: { casa: 3, fora: 2, joker: false }, 27: { casa: 2, fora: 0, joker: false }, 28: { casa: 1, fora: 1, joker: false }, 29: { casa: 2, fora: 0, joker: false }, 30: { casa: 2, fora: 1, joker: false }, 31: { casa: 5, fora: 0, joker: false }, 32: { casa: 2, fora: 2, joker: false }, 33: { casa: 1, fora: 1, joker: false }, 34: { casa: 3, fora: 1, joker: false }, 35: { casa: 4, fora: 0, joker: false }, 36: { casa: 1, fora: 1, joker: false }, 37: { casa: 2, fora: 0, joker: false }, 38: { casa: 3, fora: 0, joker: false }, 39: { casa: 4, fora: 0, joker: false }, 40: { casa: 2, fora: 1, joker: false }, 41: { casa: 2, fora: 1, joker: false }, 42: { casa: 3, fora: 0, joker: false }, 43: { casa: 2, fora: 0, joker: false }, 44: { casa: 0, fora: 2, joker: false }, 45: { casa: 4, fora: 0, joker: false }, 46: { casa: 2, fora: 1, joker: false }, 47: { casa: 1, fora: 3, joker: false }, 48: { casa: 4, fora: 0, joker: false }, 49: { casa: 2, fora: 1, joker: false }, 50: { casa: 2, fora: 1, joker: false }, 51: { casa: 3, fora: 0, joker: false }, 52: { casa: 1, fora: 0, joker: false }, 53: { casa: 1, fora: 2, joker: false }, 54: { casa: 2, fora: 1, joker: false }, 55: { casa: 0, fora: 2, joker: false }, 56: { casa: 0, fora: 3, joker: false }, 57: { casa: 0, fora: 3, joker: false }, 58: { casa: 1, fora: 3, joker: false }, 59: { casa: 2, fora: 0, joker: false }, 60: { casa: 1, fora: 0, joker: false }, 61: { casa: 1, fora: 2, joker: false }, 62: { casa: 3, fora: 0, joker: false }, 63: { casa: 0, fora: 2, joker: false }, 64: { casa: 1, fora: 2, joker: false }, 65: { casa: 0, fora: 2, joker: false }, 66: { casa: 2, fora: 0, joker: false }, 67: { casa: 0, fora: 2, joker: false }, 68: { casa: 2, fora: 0, joker: false }, 69: { casa: 0, fora: 0, joker: false }, 70: { casa: 0, fora: 0, joker: false }, 71: { casa: 1, fora: 1, joker: false }, 72: { casa: 0, fora: 3, joker: false } };
+palpites['Gabriel "Batistuta"'] = { 1: { casa: 2, fora: 0, joker: false }, 2: { casa: 0, fora: 0, joker: false }, 3: { casa: 0, fora: 3, joker: false }, 4: { casa: 1, fora: 2, joker: false }, 5: { casa: 0, fora: 4, joker: false }, 6: { casa: 2, fora: 0, joker: false }, 7: { casa: 0, fora: 3, joker: false }, 8: { casa: 0, fora: 0, joker: false }, 9: { casa: 4, fora: 0, joker: false }, 10: { casa: 1, fora: 2, joker: false }, 11: { casa: 1, fora: 0, joker: false }, 12: { casa: 0, fora: 1, joker: false }, 13: { casa: 4, fora: 0, joker: false }, 14: { casa: 3, fora: 0, joker: false }, 15: { casa: 0, fora: 2, joker: false }, 16: { casa: 1, fora: 0, joker: false }, 17: { casa: 3, fora: 0, joker: false }, 18: { casa: 0, fora: 3, joker: false }, 19: { casa: 2, fora: 0, joker: false }, 20: { casa: 1, fora: 0, joker: false }, 21: { casa: 2, fora: 0, joker: false }, 22: { casa: 2, fora: 0, joker: false }, 23: { casa: 2, fora: 1, joker: false }, 24: { casa: 0, fora: 2, joker: false }, 25: { casa: 1, fora: 0, joker: false }, 26: { casa: 1, fora: 1, joker: false }, 27: { casa: 0, fora: 0, joker: false }, 28: { casa: 1, fora: 1, joker: false }, 29: { casa: 0, fora: 0, joker: false }, 30: { casa: 1, fora: 0, joker: false }, 31: { casa: 4, fora: 0, joker: false }, 32: { casa: 0, fora: 0, joker: false }, 33: { casa: 1, fora: 1, joker: false }, 34: { casa: 2, fora: 0, joker: false }, 35: { casa: 0, fora: 0, joker: false }, 36: { casa: 0, fora: 1, joker: false }, 37: { casa: 3, fora: 0, joker: false }, 38: { casa: 2, fora: 0, joker: false }, 39: { casa: 3, fora: 0, joker: false }, 40: { casa: 1, fora: 1, joker: false }, 41: { casa: 2, fora: 1, joker: false }, 42: { casa: 4, fora: 0, joker: false }, 43: { casa: 2, fora: 1, joker: false }, 44: { casa: 1, fora: 1, joker: false }, 45: { casa: 2, fora: 0, joker: false }, 46: { casa: 3, fora: 0, joker: false }, 47: { casa: 1, fora: 2, joker: false }, 48: { casa: 1, fora: 0, joker: false }, 49: { casa: 1, fora: 0, joker: false }, 50: { casa: 1, fora: 0, joker: false }, 51: { casa: 2, fora: 0, joker: false }, 52: { casa: 1, fora: 2, joker: false }, 53: { casa: 0, fora: 2, joker: false }, 54: { casa: 1, fora: 2, joker: false }, 55: { casa: 0, fora: 3, joker: false }, 56: { casa: 0, fora: 3, joker: false }, 57: { casa: 2, fora: 2, joker: false }, 58: { casa: 0, fora: 2, joker: false }, 59: { casa: 1, fora: 1, joker: false }, 60: { casa: 2, fora: 1, joker: false }, 61: { casa: 1, fora: 2, joker: false }, 62: { casa: 0, fora: 0, joker: false }, 63: { casa: 0, fora: 0, joker: false }, 64: { casa: 1, fora: 1, joker: false }, 65: { casa: 1, fora: 2, joker: false }, 66: { casa: 1, fora: 0, joker: false }, 67: { casa: 0, fora: 2, joker: false }, 68: { casa: 0, fora: 1, joker: false }, 69: { casa: 0, fora: 3, joker: false }, 70: { casa: 2, fora: 1, joker: false }, 71: { casa: 0, fora: 2, joker: false }, 72: { casa: 0, fora: 4, joker: false } };
+palpites['Luis Jesus "Suarez"'] = { 1: { casa: 1, fora: 0, joker: false }, 2: { casa: 1, fora: 1, joker: false }, 3: { casa: 1, fora: 0, joker: false }, 4: { casa: 1, fora: 1, joker: false }, 5: { casa: 0, fora: 2, joker: false }, 6: { casa: 2, fora: 1, joker: false }, 7: { casa: 0, fora: 1, joker: false }, 8: { casa: 1, fora: 2, joker: false }, 9: { casa: 4, fora: 0, joker: false }, 10: { casa: 2, fora: 1, joker: false }, 11: { casa: 1, fora: 1, joker: false }, 12: { casa: 2, fora: 1, joker: false }, 13: { casa: 3, fora: 0, joker: false }, 14: { casa: 3, fora: 1, joker: false }, 15: { casa: 1, fora: 2, joker: false }, 16: { casa: 2, fora: 0, joker: false }, 17: { casa: 3, fora: 0, joker: false }, 18: { casa: 0, fora: 2, joker: false }, 19: { casa: 2, fora: 0, joker: false }, 20: { casa: 2, fora: 0, joker: false }, 21: { casa: 2, fora: 1, joker: false }, 22: { casa: 2, fora: 1, joker: false }, 23: { casa: 1, fora: 0, joker: false }, 24: { casa: 0, fora: 2, joker: false }, 25: { casa: 1, fora: 0, joker: false }, 26: { casa: 1, fora: 0, joker: false }, 27: { casa: 1, fora: 0, joker: false }, 28: { casa: 2, fora: 1, joker: false }, 29: { casa: 2, fora: 1, joker: false }, 30: { casa: 1, fora: 2, joker: false }, 31: { casa: 3, fora: 0, joker: false }, 32: { casa: 1, fora: 1, joker: false }, 33: { casa: 1, fora: 1, joker: false }, 34: { casa: 2, fora: 1, joker: false }, 35: { casa: 2, fora: 0, joker: false }, 36: { casa: 1, fora: 2, joker: false }, 37: { casa: 3, fora: 0, joker: false }, 38: { casa: 2, fora: 0, joker: false }, 39: { casa: 2, fora: 0, joker: false }, 40: { casa: 0, fora: 1, joker: false }, 41: { casa: 2, fora: 1, joker: false }, 42: { casa: 3, fora: 0, joker: false }, 43: { casa: 2, fora: 0, joker: false }, 44: { casa: 0, fora: 1, joker: false }, 45: { casa: 3, fora: 0, joker: false }, 46: { casa: 2, fora: 1, joker: false }, 47: { casa: 1, fora: 2, joker: false }, 48: { casa: 2, fora: 1, joker: false }, 49: { casa: 2, fora: 0, joker: false }, 50: { casa: 1, fora: 0, joker: false }, 51: { casa: 2, fora: 0, joker: false }, 52: { casa: 0, fora: 3, joker: false }, 53: { casa: 1, fora: 2, joker: false }, 54: { casa: 1, fora: 1, joker: false }, 55: { casa: 0, fora: 2, joker: false }, 56: { casa: 0, fora: 2, joker: false }, 57: { casa: 1, fora: 2, joker: false }, 58: { casa: 1, fora: 1, joker: false }, 59: { casa: 2, fora: 1, joker: false }, 60: { casa: 1, fora: 1, joker: false }, 61: { casa: 1, fora: 2, joker: false }, 62: { casa: 2, fora: 0, joker: false }, 63: { casa: 1, fora: 1, joker: false }, 64: { casa: 0, fora: 1, joker: false }, 65: { casa: 0, fora: 2, joker: false }, 66: { casa: 2, fora: 1, joker: false }, 67: { casa: 1, fora: 2, joker: false }, 68: { casa: 2, fora: 1, joker: false }, 69: { casa: 1, fora: 2, joker: false }, 70: { casa: 1, fora: 1, joker: false }, 71: { casa: 1, fora: 1, joker: false }, 72: { casa: 0, fora: 2, joker: false } };
+palpites['Luis "Enrique"'] = { 1: { casa: 2, fora: 1, joker: false }, 2: { casa: 2, fora: 0, joker: false }, 3: { casa: 1, fora: 0, joker: false }, 4: { casa: 2, fora: 1, joker: false }, 5: { casa: 0, fora: 2, joker: false }, 6: { casa: 1, fora: 2, joker: false }, 7: { casa: 1, fora: 1, joker: false }, 8: { casa: 0, fora: 2, joker: false }, 9: { casa: 3, fora: 0, joker: false }, 10: { casa: 0, fora: 1, joker: false }, 11: { casa: 3, fora: 1, joker: false }, 12: { casa: 1, fora: 0, joker: false }, 13: { casa: 2, fora: 1, joker: false }, 14: { casa: 2, fora: 2, joker: false }, 15: { casa: 1, fora: 2, joker: false }, 16: { casa: 2, fora: 0, joker: false }, 17: { casa: 0, fora: 1, joker: false }, 18: { casa: 0, fora: 3, joker: false }, 19: { casa: 2, fora: 1, joker: false }, 20: { casa: 3, fora: 1, joker: false }, 21: { casa: 2, fora: 0, joker: false }, 22: { casa: 1, fora: 2, joker: false }, 23: { casa: 2, fora: 0, joker: false }, 24: { casa: 0, fora: 2, joker: false }, 25: { casa: 1, fora: 1, joker: false }, 26: { casa: 1, fora: 0, joker: false }, 27: { casa: 2, fora: 0, joker: false }, 28: { casa: 1, fora: 1, joker: false }, 29: { casa: 2, fora: 1, joker: false }, 30: { casa: 0, fora: 2, joker: false }, 31: { casa: 3, fora: 0, joker: false }, 32: { casa: 2, fora: 1, joker: false }, 33: { casa: 1, fora: 0, joker: false }, 34: { casa: 1, fora: 1, joker: false }, 35: { casa: 2, fora: 1, joker: false }, 36: { casa: 0, fora: 2, joker: false }, 37: { casa: 3, fora: 0, joker: false }, 38: { casa: 2, fora: 1, joker: false }, 39: { casa: 0, fora: 2, joker: false }, 40: { casa: 0, fora: 3, joker: false }, 41: { casa: 1, fora: 1, joker: false }, 42: { casa: 3, fora: 0, joker: false }, 43: { casa: 2, fora: 1, joker: false }, 44: { casa: 1, fora: 2, joker: false }, 45: { casa: 2, fora: 0, joker: false }, 46: { casa: 1, fora: 0, joker: false }, 47: { casa: 0, fora: 2, joker: false }, 48: { casa: 2, fora: 1, joker: false }, 49: { casa: 1, fora: 1, joker: false }, 50: { casa: 2, fora: 0, joker: false }, 51: { casa: 3, fora: 1, joker: false }, 52: { casa: 1, fora: 2, joker: false }, 53: { casa: 2, fora: 2, joker: false }, 54: { casa: 1, fora: 1, joker: false }, 55: { casa: 1, fora: 2, joker: false }, 56: { casa: 0, fora: 2, joker: false }, 57: { casa: 1, fora: 1, joker: false }, 58: { casa: 2, fora: 1, joker: false }, 59: { casa: 1, fora: 2, joker: false }, 60: { casa: 1, fora: 1, joker: false }, 61: { casa: 2, fora: 1, joker: false }, 62: { casa: 2, fora: 0, joker: false }, 63: { casa: 2, fora: 1, joker: false }, 64: { casa: 0, fora: 2, joker: false }, 65: { casa: 0, fora: 1, joker: false }, 66: { casa: 3, fora: 2, joker: false }, 67: { casa: 1, fora: 2, joker: false }, 68: { casa: 2, fora: 0, joker: false }, 69: { casa: 2, fora: 2, joker: false }, 70: { casa: 2, fora: 1, joker: false }, 71: { casa: 0, fora: 2, joker: false }, 72: { casa: 0, fora: 3, joker: false } };
+palpites['Paulo "Futre"'] = { 1: { casa: 3, fora: 1, joker: false }, 2: { casa: 2, fora: 1, joker: false }, 3: { casa: 0, fora: 2, joker: false }, 4: { casa: 2, fora: 2, joker: false }, 5: { casa: 1, fora: 3, joker: false }, 6: { casa: 4, fora: 0, joker: false }, 7: { casa: 0, fora: 3, joker: false }, 8: { casa: 1, fora: 2, joker: false }, 9: { casa: 4, fora: 0, joker: false }, 10: { casa: 2, fora: 2, joker: false }, 11: { casa: 1, fora: 1, joker: false }, 12: { casa: 2, fora: 1, joker: false }, 13: { casa: 5, fora: 0, joker: false }, 14: { casa: 3, fora: 1, joker: false }, 15: { casa: 1, fora: 2, joker: false }, 16: { casa: 1, fora: 1, joker: false }, 17: { casa: 3, fora: 0, joker: false }, 18: { casa: 1, fora: 2, joker: false }, 19: { casa: 3, fora: 1, joker: false }, 20: { casa: 2, fora: 0, joker: false }, 21: { casa: 3, fora: 1, joker: false }, 22: { casa: 1, fora: 1, joker: false }, 23: { casa: 0, fora: 0, joker: false }, 24: { casa: 0, fora: 1, joker: false }, 25: { casa: 2, fora: 2, joker: false }, 26: { casa: 1, fora: 1, joker: false }, 27: { casa: 1, fora: 0, joker: false }, 28: { casa: 1, fora: 2, joker: false }, 29: { casa: 2, fora: 1, joker: false }, 30: { casa: 1, fora: 1, joker: false }, 31: { casa: 3, fora: 0, joker: false }, 32: { casa: 1, fora: 0, joker: false }, 33: { casa: 1, fora: 0, joker: false }, 34: { casa: 3, fora: 0, joker: false }, 35: { casa: 2, fora: 0, joker: false }, 36: { casa: 1, fora: 1, joker: false }, 37: { casa: 3, fora: 1, joker: false }, 38: { casa: 2, fora: 0, joker: false }, 39: { casa: 1, fora: 1, joker: false }, 40: { casa: 1, fora: 2, joker: false }, 41: { casa: 3, fora: 1, joker: false }, 42: { casa: 2, fora: 0, joker: false }, 43: { casa: 1, fora: 0, joker: false }, 44: { casa: 0, fora: 0, joker: false }, 45: { casa: 2, fora: 0, joker: false }, 46: { casa: 3, fora: 1, joker: false }, 47: { casa: 0, fora: 2, joker: false }, 48: { casa: 2, fora: 0, joker: false }, 49: { casa: 2, fora: 2, joker: false }, 50: { casa: 1, fora: 0, joker: false }, 51: { casa: 0, fora: 0, joker: false }, 52: { casa: 1, fora: 2, joker: false }, 53: { casa: 0, fora: 0, joker: false }, 54: { casa: 0, fora: 1, joker: false }, 55: { casa: 0, fora: 0, joker: false }, 56: { casa: 2, fora: 1, joker: false }, 57: { casa: 1, fora: 3, joker: false }, 58: { casa: 2, fora: 2, joker: false }, 59: { casa: 2, fora: 1, joker: false }, 60: { casa: 2, fora: 2, joker: false }, 61: { casa: 0, fora: 2, joker: false }, 62: { casa: 1, fora: 2, joker: false }, 63: { casa: 2, fora: 1, joker: false }, 64: { casa: 2, fora: 2, joker: false }, 65: { casa: 0, fora: 1, joker: false }, 66: { casa: 0, fora: 0, joker: false }, 67: { casa: 1, fora: 2, joker: false }, 68: { casa: 2, fora: 0, joker: false }, 69: { casa: 2, fora: 2, joker: false }, 70: { casa: 1, fora: 0, joker: false }, 71: { casa: 0, fora: 0, joker: false }, 72: { casa: 0, fora: 3, joker: false } };
+palpites['Pedro "Falcão"'] = { 1: { casa: 0, fora: 0, joker: false }, 2: { casa: 1, fora: 1, joker: false }, 3: { casa: 0, fora: 1, joker: false }, 4: { casa: 2, fora: 1, joker: false }, 5: { casa: 0, fora: 3, joker: false }, 6: { casa: 1, fora: 1, joker: false }, 7: { casa: 0, fora: 4, joker: false }, 8: { casa: 0, fora: 2, joker: false }, 9: { casa: 6, fora: 0, joker: false }, 10: { casa: 3, fora: 1, joker: false }, 11: { casa: 1, fora: 1, joker: false }, 12: { casa: 2, fora: 0, joker: false }, 13: { casa: 5, fora: 0, joker: false }, 14: { casa: 1, fora: 1, joker: false }, 15: { casa: 0, fora: 2, joker: false }, 16: { casa: 0, fora: 0, joker: false }, 17: { casa: 3, fora: 0, joker: false }, 18: { casa: 0, fora: 4, joker: false }, 19: { casa: 1, fora: 1, joker: false }, 20: { casa: 3, fora: 0, joker: false }, 21: { casa: 2, fora: 0, joker: false }, 22: { casa: 2, fora: 2, joker: false }, 23: { casa: 1, fora: 0, joker: false }, 24: { casa: 0, fora: 4, joker: false }, 25: { casa: 1, fora: 0, joker: false }, 26: { casa: 3, fora: 1, joker: false }, 27: { casa: 2, fora: 0, joker: false }, 28: { casa: 3, fora: 1, joker: false }, 29: { casa: 2, fora: 2, joker: false }, 30: { casa: 1, fora: 1, joker: false }, 31: { casa: 4, fora: 0, joker: false }, 32: { casa: 3, fora: 2, joker: false }, 33: { casa: 1, fora: 3, joker: false }, 34: { casa: 3, fora: 1, joker: false }, 35: { casa: 3, fora: 1, joker: false }, 36: { casa: 1, fora: 1, joker: false }, 37: { casa: 4, fora: 0, joker: false }, 38: { casa: 3, fora: 0, joker: false }, 39: { casa: 2, fora: 0, joker: false }, 40: { casa: 0, fora: 1, joker: false }, 41: { casa: 2, fora: 1, joker: false }, 42: { casa: 5, fora: 0, joker: false }, 43: { casa: 2, fora: 0, joker: false }, 44: { casa: 0, fora: 1, joker: false }, 45: { casa: 3, fora: 1, joker: false }, 46: { casa: 4, fora: 1, joker: false }, 47: { casa: 0, fora: 3, joker: false }, 48: { casa: 4, fora: 1, joker: false }, 49: { casa: 2, fora: 1, joker: false }, 50: { casa: 1, fora: 1, joker: false }, 51: { casa: 3, fora: 0, joker: false }, 52: { casa: 1, fora: 2, joker: false }, 53: { casa: 1, fora: 0, joker: false }, 54: { casa: 1, fora: 1, joker: false }, 55: { casa: 0, fora: 2, joker: false }, 56: { casa: 0, fora: 3, joker: false }, 57: { casa: 0, fora: 1, joker: false }, 58: { casa: 1, fora: 3, joker: false }, 59: { casa: 0, fora: 2, joker: false }, 60: { casa: 1, fora: 0, joker: false }, 61: { casa: 1, fora: 2, joker: false }, 62: { casa: 1, fora: 0, joker: false }, 63: { casa: 0, fora: 0, joker: false }, 64: { casa: 1, fora: 1, joker: false }, 65: { casa: 0, fora: 2, joker: false }, 66: { casa: 2, fora: 0, joker: false }, 67: { casa: 0, fora: 2, joker: false }, 68: { casa: 2, fora: 0, joker: false }, 69: { casa: 2, fora: 2, joker: false }, 70: { casa: 2, fora: 1, joker: false }, 71: { casa: 1, fora: 1, joker: false }, 72: { casa: 0, fora: 3, joker: false } };
+palpites['Pedro K "Pauleta"'] = { 1: { casa: 3, fora: 1, joker: false }, 2: { casa: 1, fora: 1, joker: false }, 3: { casa: 2, fora: 1, joker: false }, 4: { casa: 2, fora: 1, joker: false }, 5: { casa: 0, fora: 2, joker: false }, 6: { casa: 3, fora: 1, joker: false }, 7: { casa: 0, fora: 2, joker: false }, 8: { casa: 2, fora: 2, joker: false }, 9: { casa: 3, fora: 0, joker: false }, 10: { casa: 3, fora: 1, joker: false }, 11: { casa: 1, fora: 1, joker: false }, 12: { casa: 1, fora: 0, joker: false }, 13: { casa: 4, fora: 0, joker: false }, 14: { casa: 2, fora: 1, joker: false }, 15: { casa: 0, fora: 3, joker: false }, 16: { casa: 2, fora: 1, joker: false }, 17: { casa: 4, fora: 0, joker: false }, 18: { casa: 0, fora: 2, joker: false }, 19: { casa: 3, fora: 1, joker: false }, 20: { casa: 2, fora: 0, joker: false }, 21: { casa: 3, fora: 1, joker: false }, 22: { casa: 3, fora: 2, joker: false }, 23: { casa: 2, fora: 1, joker: false }, 24: { casa: 0, fora: 3, joker: false }, 25: { casa: 1, fora: 1, joker: false }, 26: { casa: 2, fora: 1, joker: false }, 27: { casa: 3, fora: 1, joker: false }, 28: { casa: 3, fora: 1, joker: false }, 29: { casa: 3, fora: 0, joker: false }, 30: { casa: 2, fora: 2, joker: false }, 31: { casa: 4, fora: 0, joker: false }, 32: { casa: 2, fora: 0, joker: false }, 33: { casa: 3, fora: 2, joker: false }, 34: { casa: 3, fora: 0, joker: false }, 35: { casa: 2, fora: 0, joker: false }, 36: { casa: 0, fora: 2, joker: false }, 37: { casa: 4, fora: 0, joker: false }, 38: { casa: 2, fora: 1, joker: false }, 39: { casa: 3, fora: 0, joker: false }, 40: { casa: 0, fora: 2, joker: false }, 41: { casa: 3, fora: 1, joker: false }, 42: { casa: 4, fora: 0, joker: false }, 43: { casa: 2, fora: 1, joker: false }, 44: { casa: 0, fora: 2, joker: false }, 45: { casa: 3, fora: 0, joker: false }, 46: { casa: 3, fora: 0, joker: false }, 47: { casa: 1, fora: 3, joker: false }, 48: { casa: 3, fora: 1, joker: false }, 49: { casa: 1, fora: 1, joker: false }, 50: { casa: 0, fora: 0, joker: false }, 51: { casa: 2, fora: 0, joker: false }, 52: { casa: 1, fora: 3, joker: false }, 53: { casa: 1, fora: 1, joker: false }, 54: { casa: 0, fora: 2, joker: false }, 55: { casa: 0, fora: 3, joker: false }, 56: { casa: 1, fora: 3, joker: false }, 57: { casa: 0, fora: 3, joker: false }, 58: { casa: 1, fora: 2, joker: false }, 59: { casa: 2, fora: 2, joker: false }, 60: { casa: 2, fora: 0, joker: false }, 61: { casa: 0, fora: 3, joker: false }, 62: { casa: 1, fora: 1, joker: false }, 63: { casa: 0, fora: 2, joker: false }, 64: { casa: 1, fora: 2, joker: false }, 65: { casa: 0, fora: 2, joker: false }, 66: { casa: 2, fora: 1, joker: false }, 67: { casa: 0, fora: 4, joker: false }, 68: { casa: 2, fora: 0, joker: false }, 69: { casa: 1, fora: 2, joker: false }, 70: { casa: 1, fora: 1, joker: false }, 71: { casa: 1, fora: 1, joker: false }, 72: { casa: 0, fora: 4, joker: false } };
+palpites['Pedro Sousa'] = { 1: { casa: 2, fora: 1, joker: false }, 2: { casa: 1, fora: 1, joker: false }, 3: { casa: 0, fora: 2, joker: false }, 4: { casa: 2, fora: 1, joker: false }, 5: { casa: 1, fora: 3, joker: false }, 6: { casa: 3, fora: 0, joker: false }, 7: { casa: 1, fora: 2, joker: false }, 8: { casa: 1, fora: 1, joker: false }, 9: { casa: 4, fora: 0, joker: false }, 10: { casa: 2, fora: 1, joker: false }, 11: { casa: 0, fora: 0, joker: false }, 12: { casa: 1, fora: 0, joker: false }, 13: { casa: 3, fora: 0, joker: false }, 14: { casa: 2, fora: 0, joker: false }, 15: { casa: 0, fora: 2, joker: false }, 16: { casa: 1, fora: 1, joker: false }, 17: { casa: 3, fora: 1, joker: false }, 18: { casa: 0, fora: 2, joker: false }, 19: { casa: 3, fora: 0, joker: false }, 20: { casa: 0, fora: 0, joker: false }, 21: { casa: 2, fora: 0, joker: false }, 22: { casa: 2, fora: 1, joker: false }, 23: { casa: 1, fora: 1, joker: false }, 24: { casa: 1, fora: 3, joker: false }, 25: { casa: 3, fora: 1, joker: false }, 26: { casa: 1, fora: 1, joker: false }, 27: { casa: 0, fora: 0, joker: false }, 28: { casa: 2, fora: 1, joker: false }, 29: { casa: 2, fora: 1, joker: false }, 30: { casa: 1, fora: 0, joker: false }, 31: { casa: 3, fora: 0, joker: false }, 32: { casa: 1, fora: 1, joker: false }, 33: { casa: 1, fora: 0, joker: false }, 34: { casa: 2, fora: 0, joker: false }, 35: { casa: 1, fora: 1, joker: false }, 36: { casa: 0, fora: 0, joker: false }, 37: { casa: 2, fora: 0, joker: false }, 38: { casa: 2, fora: 0, joker: false }, 39: { casa: 2, fora: 1, joker: false }, 40: { casa: 0, fora: 0, joker: false }, 41: { casa: 2, fora: 1, joker: false }, 42: { casa: 3, fora: 0, joker: false }, 43: { casa: 2, fora: 2, joker: false }, 44: { casa: 1, fora: 1, joker: false }, 45: { casa: 2, fora: 0, joker: false }, 46: { casa: 3, fora: 1, joker: false }, 47: { casa: 0, fora: 1, joker: false }, 48: { casa: 1, fora: 1, joker: false }, 49: { casa: 0, fora: 0, joker: false }, 50: { casa: 2, fora: 1, joker: false }, 51: { casa: 1, fora: 0, joker: false }, 52: { casa: 0, fora: 2, joker: false }, 53: { casa: 0, fora: 1, joker: false }, 54: { casa: 1, fora: 1, joker: false }, 55: { casa: 0, fora: 1, joker: false }, 56: { casa: 0, fora: 2, joker: false }, 57: { casa: 1, fora: 2, joker: false }, 58: { casa: 1, fora: 1, joker: false }, 59: { casa: 1, fora: 1, joker: false }, 60: { casa: 1, fora: 0, joker: false }, 61: { casa: 0, fora: 1, joker: false }, 62: { casa: 1, fora: 1, joker: false }, 63: { casa: 0, fora: 0, joker: false }, 64: { casa: 1, fora: 2, joker: false }, 65: { casa: 1, fora: 2, joker: false }, 66: { casa: 1, fora: 1, joker: false }, 67: { casa: 0, fora: 1, joker: false }, 68: { casa: 2, fora: 1, joker: false }, 69: { casa: 1, fora: 2, joker: false }, 70: { casa: 1, fora: 1, joker: false }, 71: { casa: 2, fora: 2, joker: false }, 72: { casa: 0, fora: 2, joker: false } };
+palpites['Tomé "Fernando"'] = { 1: { casa: 2, fora: 1, joker: false }, 2: { casa: 2, fora: 1, joker: false }, 3: { casa: 2, fora: 2, joker: false }, 4: { casa: 1, fora: 2, joker: false }, 5: { casa: 0, fora: 3, joker: false }, 6: { casa: 2, fora: 0, joker: false }, 7: { casa: 1, fora: 1, joker: false }, 8: { casa: 2, fora: 2, joker: false }, 9: { casa: 4, fora: 0, joker: false }, 10: { casa: 2, fora: 2, joker: false }, 11: { casa: 1, fora: 1, joker: false }, 12: { casa: 2, fora: 0, joker: false }, 13: { casa: 5, fora: 0, joker: false }, 14: { casa: 3, fora: 1, joker: false }, 15: { casa: 0, fora: 3, joker: false }, 16: { casa: 1, fora: 1, joker: false }, 17: { casa: 4, fora: 0, joker: false }, 18: { casa: 1, fora: 2, joker: false }, 19: { casa: 3, fora: 1, joker: false }, 20: { casa: 2, fora: 1, joker: false }, 21: { casa: 3, fora: 1, joker: false }, 22: { casa: 3, fora: 2, joker: false }, 23: { casa: 2, fora: 1, joker: false }, 24: { casa: 1, fora: 3, joker: false }, 25: { casa: 1, fora: 1, joker: false }, 26: { casa: 2, fora: 1, joker: false }, 27: { casa: 3, fora: 1, joker: false }, 28: { casa: 3, fora: 2, joker: false }, 29: { casa: 2, fora: 2, joker: false }, 30: { casa: 2, fora: 2, joker: false }, 31: { casa: 5, fora: 0, joker: false }, 32: { casa: 2, fora: 1, joker: false }, 33: { casa: 3, fora: 2, joker: false }, 34: { casa: 4, fora: 1, joker: false }, 35: { casa: 2, fora: 0, joker: false }, 36: { casa: 0, fora: 2, joker: false }, 37: { casa: 4, fora: 1, joker: false }, 38: { casa: 2, fora: 1, joker: false }, 39: { casa: 3, fora: 0, joker: false }, 40: { casa: 0, fora: 2, joker: false }, 41: { casa: 3, fora: 1, joker: false }, 42: { casa: 4, fora: 1, joker: false }, 43: { casa: 2, fora: 1, joker: false }, 44: { casa: 0, fora: 2, joker: false }, 45: { casa: 4, fora: 0, joker: false }, 46: { casa: 3, fora: 0, joker: false }, 47: { casa: 1, fora: 3, joker: false }, 48: { casa: 3, fora: 1, joker: false }, 49: { casa: 1, fora: 1, joker: false }, 50: { casa: 1, fora: 1, joker: false }, 51: { casa: 2, fora: 0, joker: false }, 52: { casa: 1, fora: 3, joker: false }, 53: { casa: 2, fora: 1, joker: false }, 54: { casa: 0, fora: 2, joker: false }, 55: { casa: 0, fora: 3, joker: false }, 56: { casa: 1, fora: 2, joker: false }, 57: { casa: 0, fora: 2, joker: false }, 58: { casa: 2, fora: 2, joker: false }, 59: { casa: 2, fora: 2, joker: false }, 60: { casa: 2, fora: 0, joker: false }, 61: { casa: 1, fora: 3, joker: false }, 62: { casa: 1, fora: 1, joker: false }, 63: { casa: 0, fora: 2, joker: false }, 64: { casa: 1, fora: 2, joker: false }, 65: { casa: 0, fora: 2, joker: false }, 66: { casa: 2, fora: 1, joker: false }, 67: { casa: 1, fora: 4, joker: false }, 68: { casa: 2, fora: 0, joker: false }, 69: { casa: 1, fora: 3, joker: false }, 70: { casa: 1, fora: 1, joker: false }, 71: { casa: 1, fora: 1, joker: false }, 72: { casa: 1, fora: 4, joker: false } };
+
+let equipasFavoritas = { 'André "Ginac"': 'Portugal', 'Davide "Beckham"': 'Portugal', 'Filipe "Luis"': 'Portugal', 'Gabriel "Batistuta"': 'Portugal', 'Luis Jesus "Suarez"': 'Espanha', 'Luis "Enrique"': 'Portugal', 'Paulo "Futre"': 'Portugal', 'Pedro "Falcão"': 'Portugal', 'Pedro K "Pauleta"': 'Portugal', 'Pedro Sousa': 'Brasil', 'Tomé "Fernando"': 'Portugal' };
+
+/* =========================================================
+   FIREBASE — REALTIME DATABASE
+   Substitui os valores abaixo pelos dados do TEU projeto Firebase
+   (Project settings > General > "Your apps" > SDK setup and config)
+========================================================= */
+const firebaseConfig = {
+  apiKey: "AIzaSyAgDMzrZBBMeQdVb2P-0XdiHNt-suRcmtQ",
+  authDomain: "troublemakers-2026.firebaseapp.com",
+  databaseURL: "https://troublemakers-2026-default-rtdb.europe-west1.firebasedatabase.app",
+  projectId: "troublemakers-2026",
+  storageBucket: "troublemakers-2026.firebasestorage.app",
+  messagingSenderId: "445315827942",
+  appId: "1:445315827942:web:d14a522e553832206d1327",
+  measurementId: "G-JV2BNPK0FN"
+};
+
+firebase.initializeApp(firebaseConfig);
+const db = firebase.database();
+const stateRef = db.ref('fantasyLeague');
+
+let suprimirSync = false; // evita escrever de volta quando a alteração vem de outro dispositivo
+
+/* =========================================================
+   PIN DE EDIÇÃO
+========================================================= */
+const PIN_EDICAO = '1981';
+let desbloqueado = false;
+
+function desbloquear(origem) {
+  const pin = document.getElementById('pin-' + origem).value;
+  if (pin === PIN_EDICAO) {
+    desbloqueado = true;
+    document.querySelectorAll('.pin-bar').forEach(b => b.style.display = 'none');
+    aplicarBloqueioFormularios();
+    renderGestaoJogos();
+    renderPerfis();
+    renderRegras();
+  } else {
+    document.getElementById('pin-msg-' + origem).textContent = 'PIN incorreto';
+  }
+}
+
+function aplicarBloqueioFormularios() {
+  const bloquear = !desbloqueado;
+  ['gj-casa', 'gj-fora', 'gj-data', 'novo-nome', 'novo-favorita'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.disabled = bloquear;
+  });
+  document.querySelectorAll('#gestao .save-btn, #perfis > .profile-form .save-btn').forEach(btn => {
+    btn.disabled = bloquear;
+  });
+}
+
+
+function salvarEstado() {
+  if (suprimirSync) return;
+  stateRef.set({ jogos, palpites, jogadores, equipasFavoritas, regras, proximoJogoId });
+  document.getElementById('sync-status').textContent = 'Sincronizado ✓';
+}
+
+function normalizarEstado() {
+  // o Firebase remove chaves com valor null/objetos vazios — repõe defaults
+  jogos.forEach(j => {
+    if (!j.favoritaPassouFase) j.favoritaPassouFase = {};
+    if (j.resultadoCasa === undefined) j.resultadoCasa = null;
+    if (j.resultadoFora === undefined) j.resultadoFora = null;
+  });
+}
+
+function aplicarEstadoRemoto(data) {
+  suprimirSync = true;
+  jogos = data.jogos || jogos;
+  palpites = data.palpites || palpites;
+  jogadores = data.jogadores || jogadores;
+  equipasFavoritas = data.equipasFavoritas || equipasFavoritas;
+  regras = data.regras || regras;
+  proximoJogoId = data.proximoJogoId || proximoJogoId;
+  normalizarEstado();
+  renderTudo();
+  renderRegras();
+  populateSelect(document.getElementById('novo-favorita'), getTeams()[0]);
+  document.getElementById('sync-status').textContent = 'Sincronizado ✓';
+  suprimirSync = false;
+}
+
+stateRef.once('value').then(snap => {
+  if (snap.exists()) {
+    aplicarEstadoRemoto(snap.val());
+  } else {
+    // primeira vez: este dispositivo "semeia" a base de dados com os dados de exemplo
+    salvarEstado();
+  }
+  // a partir daqui, qualquer alteração feita por QUALQUER dispositivo chega aqui
+  stateRef.on('value', snap => {
+    if (snap.exists()) aplicarEstadoRemoto(snap.val());
+  });
+}).catch(err => {
+  document.getElementById('sync-status').textContent = 'Erro de ligação ao Firebase';
+  console.error(err);
+});
+
+/* =========================================================
+   LÓGICA DE PONTUAÇÃO
+========================================================= */
+function tendenciaResultado(casa, fora) {
+  if (casa > fora) return 'casa';
+  if (casa < fora) return 'fora';
+  return 'empate';
+}
+
+function calcularPontosJogo(jogo, palpite) {
+  if (jogo.status !== 'final' && jogo.status !== 'live') return 0;
+  if (palpite.casa == null || palpite.fora == null) return 0;
+  if (jogo.resultadoCasa == null) return 0;
+
+  let pts = 0;
+  const acertouResultado = palpite.casa === jogo.resultadoCasa && palpite.fora === jogo.resultadoFora;
+  const acertouTendencia = tendenciaResultado(palpite.casa, palpite.fora) === tendenciaResultado(jogo.resultadoCasa, jogo.resultadoFora);
+
+  if (acertouResultado) pts = regras.resultado;
+  else if (acertouTendencia) pts = regras.tendencia;
+  else pts = regras.falha;
+
+  if (palpite.joker) pts = pts * regras.joker;
+  return pts;
+}
+
+function calcularPontosTotais(jogador) {
+  let total = 0, certos = 0, tendencias = 0, jokerUsado = false;
+
+  jogos.forEach(jogo => {
+    const palpite = palpites[jogador]?.[jogo.id];
+    if (!palpite) return;
+    if (palpite.joker) jokerUsado = true;
+
+    if ((jogo.status === 'final' || jogo.status === 'live') && jogo.resultadoCasa != null) {
+      const acertouResultado = palpite.casa === jogo.resultadoCasa && palpite.fora === jogo.resultadoFora;
+      const acertouTendencia = tendenciaResultado(palpite.casa, palpite.fora) === tendenciaResultado(jogo.resultadoCasa, jogo.resultadoFora);
+      if (acertouResultado) certos++;
+      else if (acertouTendencia) tendencias++;
+      total += calcularPontosJogo(jogo, palpite);
+    }
+
+    // bónus de equipa favorita a passar de fase
+    if (jogo.favoritaPassouFase && jogo.favoritaPassouFase[equipasFavoritas[jogador]]) {
+      total += regras.bonus;
+    }
+  });
+
+  return { total, certos, tendencias, jokerUsado };
+}
+
+/* =========================================================
+   RENDER: TICKER EM DIRETO
+========================================================= */
+function renderTicker() {
+  const el = document.getElementById('ticker');
+  el.innerHTML = jogos.map(j => `
+    <div class="ticker-card ${j.status === 'live' ? 'live' : ''}">
+      ${j.status === 'live' ? '<div class="live-dot"></div>' : ''}
+      <div class="ticker-teams">${j.casa} vs ${j.fora}</div>
+      <div class="ticker-score">${j.resultadoCasa ?? '–'} : ${j.resultadoFora ?? '–'}</div>
+      <div class="ticker-status">${j.status === 'live' ? 'EM DIRETO' : j.status === 'final' ? 'TERMINADO' : 'AGENDADO'}</div>
+    </div>
+  `).join('');
+}
+
+/* =========================================================
+   RENDER: CLASSIFICAÇÃO
+========================================================= */
+function renderClassificacao() {
+  const dados = jogadores.map(j => ({ nome: j, ...calcularPontosTotais(j) }));
+  dados.sort((a, b) => b.total - a.total);
+
+  document.getElementById('tabela-classificacao').innerHTML = dados.map((d, i) => `
+    <tr class="${d.nome === 'Filipe' ? 'me' : ''}">
+      <td class="rank ${i === 0 ? 'first' : ''}">${i + 1}</td>
+      <td>${d.nome}${d.nome === 'Filipe' ? ' <span style="color:var(--gray);font-size:11px;">(tu)</span>' : ''}</td>
+      <td class="num">${d.certos}</td>
+      <td class="num">${d.tendencias}</td>
+      <td class="num">${d.jokerUsado ? '<span class="badge badge-joker">JOKER</span>' : '—'}</td>
+      <td class="num pts">${d.total}</td>
+    </tr>
+  `).join('');
+
+  salvarEstado();
+}
+
+/* =========================================================
+   RENDER: JOGOS DISPUTADOS (resultados efetivos, por jornada)
+========================================================= */
+function renderJogosDisputados() {
+  const container = document.getElementById('lista-disputados');
+  const disputados = jogos.filter(j => j.status === 'final' || j.status === 'live');
+
+  if (disputados.length === 0) {
+    container.innerHTML = '<p style="color:var(--gray);font-size:13px;">Ainda não há jogos disputados.</p>';
+    return;
+  }
+
+  let html = '';
+  [1, 2, 3].forEach(jornada => {
+    const doJornada = disputados.filter(j => j.jornada === jornada);
+    if (doJornada.length === 0) return;
+    html += `<div class="jornada-header">Jornada ${jornada}</div>`;
+    html += doJornada.map(j => `
+      <div class="resultado-box">
+        <div>
+          <div>${j.casa} <span style="color:var(--gray);">vs</span> ${j.fora}</div>
+          <div class="grupo-tag">Grupo ${j.grupo}${j.status === 'live' ? ' · EM DIRETO' : ''}</div>
+        </div>
+        <div class="score">${j.resultadoCasa} - ${j.resultadoFora}</div>
+      </div>
+    `).join('');
+  });
+  container.innerHTML = html;
+}
+
+/* =========================================================
+   RENDER / GUARDAR: REGRAS
+========================================================= */
+function renderRegras() {
+  document.getElementById('r-resultado').value = regras.resultado;
+  document.getElementById('r-tendencia').value = regras.tendencia;
+  document.getElementById('r-falha').value = regras.falha;
+  document.getElementById('r-joker').value = regras.joker;
+  document.getElementById('r-bonus').value = regras.bonus;
+
+  ['r-resultado','r-tendencia','r-falha','r-joker','r-bonus'].forEach(id => {
+    document.getElementById(id).disabled = !desbloqueado;
+  });
+  const btn = document.querySelector('#regras .save-btn');
+  if (btn) btn.disabled = !desbloqueado;
+}
+
+function guardarRegras() {
+  regras = {
+    resultado: parseFloat(document.getElementById('r-resultado').value) || 0,
+    tendencia: parseFloat(document.getElementById('r-tendencia').value) || 0,
+    falha: parseFloat(document.getElementById('r-falha').value) || 0,
+    joker: parseFloat(document.getElementById('r-joker').value) || 1,
+    bonus: parseFloat(document.getElementById('r-bonus').value) || 0
+  };
+  localStorage.setItem('regrasFantasy', JSON.stringify(regras));
+  renderClassificacao();
+  renderJogosDisputados();
+
+  const msg = document.getElementById('save-msg');
+  msg.style.display = 'inline';
+  setTimeout(() => msg.style.display = 'none', 2000);
+}
+
+/* =========================================================
+   NAVEGAÇÃO
+========================================================= */
+document.querySelectorAll('nav button').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('nav button').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('main section').forEach(s => s.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById(btn.dataset.tab).classList.add('active');
+  });
+});
+
+/* =========================================================
+   SIMULAÇÃO "EM DIRETO" (substituir por chamada à API real)
+========================================================= */
+setInterval(() => {
+  const jogoLive = jogos.find(j => j.status === 'live');
+  if (jogoLive && Math.random() < 0.15) {
+    if (Math.random() < 0.5) jogoLive.resultadoCasa++;
+    else jogoLive.resultadoFora++;
+    renderTudo();
+  }
+}, 4000);
+
+/* =========================================================
+   PERFIS DE JOGADOR
+========================================================= */
+function getTeams() {
+  return [...new Set(jogos.flatMap(j => [j.casa, j.fora]))];
+}
+
+function escNome(s) {
+  return String(s).replace(/"/g, '&quot;');
+}
+
+function populateSelect(select, selected) {
+  select.innerHTML = getTeams().map(t => `<option value="${t}" ${t === selected ? 'selected' : ''}>${t}</option>`).join('');
+}
+
+function criarPerfil() {
+  if (!desbloqueado) return;
+  const nomeInput = document.getElementById('novo-nome');
+  const nome = nomeInput.value.trim();
+  if (!nome) { alert('Indica um nome para o jogador.'); return; }
+  if (jogadores.includes(nome)) { alert('Já existe um jogador com esse nome.'); return; }
+
+  const favorita = document.getElementById('novo-favorita').value;
+
+  jogadores.push(nome);
+  palpites[nome] = {};
+  jogos.forEach(j => { palpites[nome][j.id] = { casa: 0, fora: 0, joker: false }; });
+  equipasFavoritas[nome] = favorita;
+
+  nomeInput.value = '';
+  renderPerfis();
+  renderClassificacao();
+
+  const msg = document.getElementById('perfil-msg');
+  msg.style.display = 'inline';
+  setTimeout(() => msg.style.display = 'none', 2000);
+}
+
+function renomearJogador(input, nomeAntigo) {
+  if (!desbloqueado) { input.value = nomeAntigo; return; }
+  const novoNome = input.value.trim();
+  if (!novoNome || novoNome === nomeAntigo) { input.value = nomeAntigo; return; }
+  if (jogadores.includes(novoNome)) { alert('Já existe um jogador com esse nome.'); input.value = nomeAntigo; return; }
+
+  jogadores[jogadores.indexOf(nomeAntigo)] = novoNome;
+  palpites[novoNome] = palpites[nomeAntigo]; delete palpites[nomeAntigo];
+  equipasFavoritas[novoNome] = equipasFavoritas[nomeAntigo]; delete equipasFavoritas[nomeAntigo];
+
+  renderPerfis();
+  renderClassificacao();
+}
+
+function atualizarFavorita(jogador, valor) {
+  if (!desbloqueado) { renderPerfis(); return; }
+  equipasFavoritas[jogador] = valor;
+  renderClassificacao();
+}
+
+function atualizarPalpiteJogador(jogador, jogoId, campo, valor) {
+  const jogo = jogos.find(j => j.id === jogoId);
+  if (!desbloqueado || !jogo || jogo.status !== 'agendado') {
+    renderPerfis();
+    abrirPalpitesModal(jogador);
+    return;
+  }
+  palpites[jogador][jogoId][campo] = parseInt(valor, 10) || 0;
+  renderClassificacao();
+}
+
+function toggleJokerJogador(jogador, jogoId) {
+  const jogo = jogos.find(j => j.id === jogoId);
+  if (!desbloqueado || !jogo || jogo.status !== 'agendado') {
+    abrirPalpitesModal(jogador);
+    return;
+  }
+  const usadoNoutroJogo = Object.entries(palpites[jogador]).some(([id, p]) => p.joker && id != jogoId);
+  if (usadoNoutroJogo) {
+    alert(`${jogador} já usou o Joker noutro jogo. Só pode ser usado uma vez em toda a competição.`);
+    return;
+  }
+  palpites[jogador][jogoId].joker = !palpites[jogador][jogoId].joker;
+  renderClassificacao();
+  abrirPalpitesModal(jogador); // re-render modal aberto
+}
+
+function removerJogador(nome) {
+  if (!desbloqueado) return;
+  if (!confirm(`Remover o perfil de ${nome}?`)) return;
+  jogadores.splice(jogadores.indexOf(nome), 1);
+  delete palpites[nome];
+  delete equipasFavoritas[nome];
+  renderPerfis();
+  renderClassificacao();
+}
+
+function renderPerfis() {
+  document.getElementById('profile-grid').innerHTML = jogadores.map(nome => {
+    const en = escNome(nome);
+    return `
+    <div class="profile-card">
+      <div class="profile-card-head">
+        <input type="text" value="${en}" ${desbloqueado ? '' : 'disabled'} onchange="renomearJogador(this, '${en}')">
+        <span class="remove-link" style="${desbloqueado ? '' : 'opacity:.4;pointer-events:none;'}" onclick="removerJogador('${en}')">remover</span>
+      </div>
+      <div class="fav-row">
+        Equipa favorita:
+        <select ${desbloqueado ? '' : 'disabled'} onchange="atualizarFavorita('${en}', this.value)">
+          ${getTeams().map(t => `<option value="${t}" ${t === equipasFavoritas[nome] ? 'selected' : ''}>${t}</option>`).join('')}
+        </select>
+      </div>
+      <button class="save-btn" style="width:100%;margin-top:4px;" onclick="abrirPalpitesModal('${en}')">Consultar palpites</button>
+    </div>
+  `;
+  }).join('');
+}
+
+/* =========================================================
+   MODAL DE PALPITES (abre em "janela" sobreposta)
+========================================================= */
+function abrirPalpitesModal(nome) {
+  const en = escNome(nome);
+  document.getElementById('modal-titulo').textContent = `Palpites de ${nome}`;
+
+  let html = '';
+  [1, 2, 3].forEach(jornada => {
+    const doJornada = jogos.filter(j => j.jornada === jornada);
+    if (doJornada.length === 0) return;
+    html += `<div class="jornada-header">Jornada ${jornada}</div>`;
+    html += doJornada.map(j => {
+      const p = palpites[nome][j.id];
+      const editavel = j.status === 'agendado' && desbloqueado;
+      const pontos = calcularPontosJogo(j, p);
+      return `
+      <div class="palpite-linha">
+        <div class="teams">
+          ${j.casa} <span style="color:var(--gray);">vs</span> ${j.fora}
+          <div class="grupo-tag" style="color:var(--gray);font-size:11px;">Grupo ${j.grupo}</div>
+        </div>
+        <div class="score-input">
+          <input type="number" min="0" value="${p.casa}" style="width:46px;" ${editavel ? '' : 'disabled'} onchange="atualizarPalpiteJogador('${en}',${j.id},'casa',this.value)">
+          <span style="color:var(--gray);">–</span>
+          <input type="number" min="0" value="${p.fora}" style="width:46px;" ${editavel ? '' : 'disabled'} onchange="atualizarPalpiteJogador('${en}',${j.id},'fora',this.value)">
+        </div>
+        <div class="joker-toggle ${p.joker ? 'active' : ''}" style="padding:4px 8px;font-size:11px;${editavel ? '' : 'opacity:.5;pointer-events:none;'}" onclick="toggleJokerJogador('${en}',${j.id})">★ Joker</div>
+        ${j.status !== 'agendado' ? `<div style="font-size:11px;color:var(--gray);">Resultado: <b style="color:var(--cream);">${j.resultadoCasa}-${j.resultadoFora}</b> · <span class="pontos-ganhos">+${pontos} pts</span></div>` : ''}
+      </div>`;
+    }).join('');
+  });
+
+  document.getElementById('modal-conteudo').innerHTML = html;
+  document.getElementById('modal-overlay').classList.add('open');
+}
+
+function fecharPalpitesModal() {
+  document.getElementById('modal-overlay').classList.remove('open');
+}
+
+/* =========================================================
+   GESTÃO DE JOGOS (calendário + resultados em direto)
+========================================================= */
+let proximoJogoId = jogos.length + 1;
+
+function adicionarJogo() {
+  if (!desbloqueado) return;
+  const casa = document.getElementById('gj-casa').value.trim();
+  const fora = document.getElementById('gj-fora').value.trim();
+  const data = document.getElementById('gj-data').value.trim() || 'Por definir';
+
+  if (!casa || !fora) { alert('Indica as duas equipas.'); return; }
+
+  const novoJogo = {
+    id: proximoJogoId++,
+    casa, fora, data,
+    status: 'agendado',
+    resultadoCasa: null, resultadoFora: null,
+    favoritaPassouFase: {}
+  };
+  jogos.push(novoJogo);
+
+  // cria entrada de palpite (0-0, sem joker) para todos os jogadores existentes
+  jogadores.forEach(j => {
+    palpites[j][novoJogo.id] = { casa: 0, fora: 0, joker: false };
+  });
+
+  document.getElementById('gj-casa').value = '';
+  document.getElementById('gj-fora').value = '';
+  document.getElementById('gj-data').value = '';
+
+  renderTudo();
+
+  const msg = document.getElementById('gestao-msg');
+  msg.style.display = 'inline';
+  setTimeout(() => msg.style.display = 'none', 2000);
+}
+
+function atualizarStatusJogo(jogoId, status) {
+  if (!desbloqueado) { renderGestaoJogos(); return; }
+  const jogo = jogos.find(j => j.id === jogoId);
+  jogo.status = status;
+  // ao passar para live/final, garante que o resultado tem valores numéricos
+  if (status !== 'agendado' && jogo.resultadoCasa == null) {
+    jogo.resultadoCasa = 0;
+    jogo.resultadoFora = 0;
+  }
+  if (status === 'agendado') {
+    jogo.resultadoCasa = null;
+    jogo.resultadoFora = null;
+  }
+  renderTudo();
+}
+
+function atualizarResultadoJogo(jogoId, campo, valor) {
+  if (!desbloqueado) { renderGestaoJogos(); return; }
+  const jogo = jogos.find(j => j.id === jogoId);
+  jogo[campo] = parseInt(valor, 10) || 0;
+  renderTudo();
+}
+
+function ajustarMarcador(jogoId, campo, delta) {
+  if (!desbloqueado) return;
+  const jogo = jogos.find(j => j.id === jogoId);
+  jogo[campo] = Math.max(0, (jogo[campo] || 0) + delta);
+  renderTudo();
+}
+
+function toggleFavoritaPassou(jogoId, equipa) {
+  if (!desbloqueado) { renderGestaoJogos(); return; }
+  const jogo = jogos.find(j => j.id === jogoId);
+  jogo.favoritaPassouFase[equipa] = !jogo.favoritaPassouFase[equipa];
+  renderClassificacao();
+}
+
+function renderGestaoJogos() {
+  const filtroEl = document.getElementById('filtro-jornada');
+  const filtro = filtroEl ? filtroEl.value : 'todas';
+
+  let html = '';
+  [1, 2, 3].forEach(jornada => {
+    if (filtro !== 'todas' && parseInt(filtro, 10) !== jornada) return;
+    const doJornada = jogos.filter(j => j.jornada === jornada);
+    if (doJornada.length === 0) return;
+    html += `<div class="jornada-header">Jornada ${jornada}</div>`;
+    html += doJornada.map(j => `
+    <div class="gestao-row">
+      <div>
+        <div class="teams">${j.casa} <span style="color:var(--gray);">vs</span> ${j.fora}</div>
+        <div class="data-fase">${j.data || ''}</div>
+      </div>
+
+      <select ${desbloqueado ? '' : 'disabled'} onchange="atualizarStatusJogo(${j.id}, this.value)">
+        <option value="agendado" ${j.status==='agendado'?'selected':''}>Agendado</option>
+        <option value="live" ${j.status==='live'?'selected':''}>Em direto</option>
+        <option value="final" ${j.status==='final'?'selected':''}>Terminado</option>
+      </select>
+
+      ${j.status !== 'agendado' ? `
+        <div class="score-input">
+          <input type="number" min="0" value="${j.resultadoCasa}" ${desbloqueado ? '' : 'disabled'} onchange="atualizarResultadoJogo(${j.id},'resultadoCasa',this.value)">
+          <button class="remove-link" style="color:var(--gray);border-color:#1f3a63;${desbloqueado ? '' : 'opacity:.4;pointer-events:none;'}" onclick="ajustarMarcador(${j.id},'resultadoCasa',1)">+1 ${j.casa}</button>
+          <span style="color:var(--gray);">–</span>
+          <input type="number" min="0" value="${j.resultadoFora}" ${desbloqueado ? '' : 'disabled'} onchange="atualizarResultadoJogo(${j.id},'resultadoFora',this.value)">
+          <button class="remove-link" style="color:var(--gray);border-color:#1f3a63;${desbloqueado ? '' : 'opacity:.4;pointer-events:none;'}" onclick="ajustarMarcador(${j.id},'resultadoFora',1)">+1 ${j.fora}</button>
+        </div>
+        ${j.status === 'live' ? `<div class="live-flag"><span class="live-dot-static"></span>A decorrer</div>` : ''}
+      ` : `<div class="data-fase">Sem resultado — palpites ainda editáveis</div>`}
+
+      ${j.status === 'final' ? `
+        <label style="font-size:11px;color:var(--gray);display:flex;align-items:center;gap:4px;cursor:pointer;">
+          <input type="checkbox" ${desbloqueado ? '' : 'disabled'} ${j.favoritaPassouFase[j.casa]?'checked':''} onchange="toggleFavoritaPassou(${j.id}, '${j.casa}')"> ${j.casa} passou de fase
+        </label>
+        <label style="font-size:11px;color:var(--gray);display:flex;align-items:center;gap:4px;cursor:pointer;">
+          <input type="checkbox" ${desbloqueado ? '' : 'disabled'} ${j.favoritaPassouFase[j.fora]?'checked':''} onchange="toggleFavoritaPassou(${j.id}, '${j.fora}')"> ${j.fora} passou de fase
+        </label>
+      ` : ''}
+    </div>
+    `).join('');
+  });
+
+  // jogos adicionados manualmente sem jornada definida
+  const semJornada = (filtro === 'todas') ? jogos.filter(j => !j.jornada) : [];
+  if (semJornada.length > 0) {
+    html += `<div class="jornada-header">Outros jogos</div>`;
+    html += semJornada.map(j => `
+    <div class="gestao-row">
+      <div>
+        <div class="teams">${j.casa} <span style="color:var(--gray);">vs</span> ${j.fora}</div>
+        <div class="data-fase">${j.data || ''}</div>
+      </div>
+      <select onchange="atualizarStatusJogo(${j.id}, this.value)">
+        <option value="agendado" ${j.status==='agendado'?'selected':''}>Agendado</option>
+        <option value="live" ${j.status==='live'?'selected':''}>Em direto</option>
+        <option value="final" ${j.status==='final'?'selected':''}>Terminado</option>
+      </select>
+      ${j.status !== 'agendado' ? `
+        <div class="score-input">
+          <input type="number" min="0" value="${j.resultadoCasa}" onchange="atualizarResultadoJogo(${j.id},'resultadoCasa',this.value)">
+          <span style="color:var(--gray);">–</span>
+          <input type="number" min="0" value="${j.resultadoFora}" onchange="atualizarResultadoJogo(${j.id},'resultadoFora',this.value)">
+        </div>
+      ` : ''}
+    </div>
+    `).join('');
+  }
+
+  document.getElementById('lista-gestao').innerHTML = html;
+}
+
+function renderTudo() {
+  renderTicker();
+  renderClassificacao();
+  renderJogosDisputados();
+  renderPerfis();
+  renderGestaoJogos();
+}
+
+
+renderTudo();
+renderRegras();
+populateSelect(document.getElementById('novo-favorita'), getTeams()[0]);
+aplicarBloqueioFormularios();
+</script>
+
+</body>
+</html>
